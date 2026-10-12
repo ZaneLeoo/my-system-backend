@@ -1,0 +1,55 @@
+name: my-system
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: my-system-mysql
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MYSQL_PORT:-13306}:3306"
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-my_system}
+      MYSQL_USER: ${MYSQL_USER:-my_system}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 中设置 MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 中设置 MYSQL_ROOT_PASSWORD}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./sql/ry_20260417.sql:/docker-entrypoint-initdb.d/01-ruoyi.sql:ro
+      - ./sql/quartz.sql:/docker-entrypoint-initdb.d/02-quartz.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysql -h 127.0.0.1 -u root -Nse 'SELECT 1' >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  redis:
+    image: redis:8.4
+    container_name: my-system-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-16379}:6379"
+    environment:
+      TZ: Asia/Shanghai
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  mysql-data:
+    name: my-system-mysql-data
+  redis-data:
+    name: my-system-redis-data
+
+networks:
+  default:
+    name: my-system-network

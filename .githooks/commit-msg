@@ -1,0 +1,10 @@
+#!/bin/sh
+header=$(head -n 1 "$1")
+if ! printf '%s\n' "$header" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]+\))?!?: .+'; then
+  echo '提交格式应为 feat(模块): 中文描述，可按需添加提交体。' >&2
+  exit 1
+fi
+if ! printf '%s\n' "$header" | LC_ALL=C.UTF-8 grep -Eq '[一-龥]'; then
+  echo '提交标题需要包含中文描述。' >&2
+  exit 1
+fi

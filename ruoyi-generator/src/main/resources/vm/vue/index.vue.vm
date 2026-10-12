@@ -179,7 +179,7 @@
         </template>
       </el-table-column>
     </el-table>
-    
+
     <pagination
       v-show="total>0"
       :total="total"
@@ -611,7 +611,7 @@ export default {
       }).catch(() => {})
     },
 #if($table.sub)
-	/** ${subTable.functionName}序号 */
+    /** ${subTable.functionName}序号 */
     row${subClassName}Index({ row, rowIndex }) {
       row.index = rowIndex + 1
     },
