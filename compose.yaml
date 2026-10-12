@@ -5,6 +5,7 @@ services:
     image: mysql:8.4
     container_name: my-system-mysql
     restart: unless-stopped
+    entrypoint: ["sh", "/usr/local/bin/my-system-mysql-entrypoint.sh"]
     ports:
       - "127.0.0.1:${MYSQL_PORT:-13306}:3306"
     environment:
@@ -16,6 +17,8 @@ services:
     command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./docker/mysql/charset.cnf:/etc/mysql/my-system-charset.cnf:ro
+      - ./docker/mysql/entrypoint.sh:/usr/local/bin/my-system-mysql-entrypoint.sh:ro
       - ./sql/ry_20260417.sql:/docker-entrypoint-initdb.d/01-ruoyi.sql:ro
       - ./sql/quartz.sql:/docker-entrypoint-initdb.d/02-quartz.sql:ro
     healthcheck:

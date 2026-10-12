@@ -38,6 +38,8 @@ java -jar ruoyi-admin/target/ruoyi-admin.jar
 数据库名、用户名默认为 `my_system`，密码保存在被 Git 忽略的 `.env` 中。
 Docker Compose 和 Spring Boot 读取同一份 `.env`。上传文件在 `data/upload`，日志在 `logs`。
 MySQL 首次创建数据卷时，按顺序执行 `sql/ry_20260417.sql` 和 `sql/quartz.sql`。
+SQL 脚本显式执行 `SET NAMES utf8mb4`，客户端配置也固定为 `utf8mb4`，确保 UTF-8 中文按正确编码导入。
+MySQL 启动脚本会将客户端配置复制到容器内并设置 `0644` 权限，避免 Windows 挂载文件因权限过宽而被忽略。
 数据卷、网络均使用 `my-system-` 前缀，数据库端口仅绑定本机。
 
 ```powershell
