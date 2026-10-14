@@ -1,11 +1,13 @@
 package com.ruoyi.business.masterdata.category.domain;
 
-import com.baomidou.mybatisplus.annotation.*;
-import java.time.LocalDateTime;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.ruoyi.common.core.domain.BusinessEntity;
 
-/** 存货分类持久化实体；不继承含查询辅助字段的旧 BaseEntity。 */
+/** 存货分类实体，继承公共审计与逻辑删除约定。 */
 @TableName("md_item_category")
-public class ItemCategory {
+public class ItemCategory extends BusinessEntity {
   /** 分类 ID。 */
   @TableId(type = IdType.AUTO)
   private Long categoryId;
@@ -30,26 +32,6 @@ public class ItemCategory {
 
   /** 编辑版本号。 */
   private Integer version;
-
-  /** 逻辑删除标记。 */
-  @TableLogic(value = CategoryConstants.NORMAL, delval = CategoryConstants.DELETED)
-  private String delFlag;
-
-  /** 创建账号。 */
-  @TableField(fill = FieldFill.INSERT)
-  private String createBy;
-
-  /** 创建时间。 */
-  @TableField(fill = FieldFill.INSERT)
-  private LocalDateTime createTime;
-
-  /** 修改账号。 */
-  @TableField(fill = FieldFill.INSERT_UPDATE)
-  private String updateBy;
-
-  /** 修改时间。 */
-  @TableField(fill = FieldFill.INSERT_UPDATE)
-  private LocalDateTime updateTime;
 
   /** 返回分类 ID。 */
   public Long getCategoryId() {
@@ -129,55 +111,5 @@ public class ItemCategory {
   /** 设置编辑版本号。 */
   public void setVersion(Integer version) {
     this.version = version;
-  }
-
-  /** 返回逻辑删除标记。 */
-  public String getDelFlag() {
-    return delFlag;
-  }
-
-  /** 设置逻辑删除标记。 */
-  public void setDelFlag(String delFlag) {
-    this.delFlag = delFlag;
-  }
-
-  /** 返回创建账号。 */
-  public String getCreateBy() {
-    return createBy;
-  }
-
-  /** 设置创建账号。 */
-  public void setCreateBy(String createBy) {
-    this.createBy = createBy;
-  }
-
-  /** 返回创建时间。 */
-  public LocalDateTime getCreateTime() {
-    return createTime;
-  }
-
-  /** 设置创建时间。 */
-  public void setCreateTime(LocalDateTime createTime) {
-    this.createTime = createTime;
-  }
-
-  /** 返回修改账号。 */
-  public String getUpdateBy() {
-    return updateBy;
-  }
-
-  /** 设置修改账号。 */
-  public void setUpdateBy(String updateBy) {
-    this.updateBy = updateBy;
-  }
-
-  /** 返回修改时间。 */
-  public LocalDateTime getUpdateTime() {
-    return updateTime;
-  }
-
-  /** 设置修改时间。 */
-  public void setUpdateTime(LocalDateTime updateTime) {
-    this.updateTime = updateTime;
   }
 }

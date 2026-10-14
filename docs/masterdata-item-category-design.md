@@ -65,7 +65,7 @@ CREATE TABLE md_item_category (
 | service    | `ItemCategoryService` 与实现，承载唯一性、父子关系、状态、删除检查和事务         |
 | mapper     | `ItemCategoryMapper extends BaseMapper<ItemCategory>`，复杂查询再添加 XML        |
 
-新增业务实体不直接继承若依 `BaseEntity`：其中含 `searchValue`、`params` 等非持久化属性，不能直接交给 MP 自动映射。首个业务实体明确声明审计字段；真实业务形成后再提炼共用基类。
+新增业务实体继承公共 `BusinessEntity`，由其父类 `AuditEntity` 提供四个审计字段。若依 `BaseEntity` 含查询辅助属性，维持原有用法。ID、分类状态、备注和版本号仍在分类实体中声明。统一约定见 [业务持久化与接口约定](business-persistence-conventions.md)。
 
 审计账号采用当前登录用户名，与现有项目一致；服务端统一填充。业务接入时配置 `MetaObjectHandler` 和字段填充策略，并显式接入手工会话工厂的 `GlobalConfig`；不能仅声明填充器 Bean。验证新增、更新以及 `deleteById(entity)` 的删除审计更新。`@TableLogic` 本身不负责记录操作者，也不能代替引用检查或业务事务。
 
@@ -84,7 +84,7 @@ CREATE TABLE md_item_category (
 | `PUT`          | 修改分类及状态                                   | `edit`   |
 | `DELETE /{id}?version={version}` | 校验后逻辑删除                         | `remove` |
 
-沿用 `AjaxResult` 响应及 `@PreAuthorize`、`@Log`。首期树形分类不分页，编码/名称/状态过滤时保留匹配节点的祖先以呈现层级；父节点仅用于上下文时不把它算作匹配结果。
+成功及错误响应统一使用现有 `R<T>`，保留 `@PreAuthorize`、`@Log`。DTO、VO 均使用普通 Java 类。首期树形分类不分页，编码/名称/状态过滤时保留匹配节点的祖先以呈现层级；父节点仅用于上下文时不把它算作匹配结果。
 
 前端菜单位于“基础资料 → 料品分类”，页面使用 VXE 树表和 Element Plus 编辑/详情抽屉，保持筛选及展开状态；上级选择使用树选择器。分类首期不加入导入、导出和树拖拽改父级，先验证基础规则。
 

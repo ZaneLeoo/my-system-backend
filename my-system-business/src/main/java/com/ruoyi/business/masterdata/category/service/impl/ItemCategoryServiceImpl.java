@@ -94,15 +94,14 @@ public class ItemCategoryServiceImpl implements ItemCategoryService {
   @Override
   @Transactional(rollbackFor = Exception.class)
   public CategoryView create(SaveCategoryRequest request) {
-    if (request.categoryId() != null || request.version() != null) {
+    if (request.getCategoryId() != null || request.getVersion() != null) {
       throw new ServiceException("新增分类不能指定 ID 或版本号");
     }
     lockTree();
     validateParent(request, index(allCategories()));
-    checkCode(request.categoryCode(), null);
+    checkCode(request.getCategoryCode(), null);
     ItemCategory category = new ItemCategory();
     copyFields(request, category);
-    category.setDelFlag(CategoryConstants.NORMAL);
     category.setVersion(0);
     try {
       mapper.insert(category);
@@ -118,10 +117,10 @@ public class ItemCategoryServiceImpl implements ItemCategoryService {
   public void update(SaveCategoryRequest request) {
     lockTree();
     Map<Long, ItemCategory> indexed = index(allCategories());
-    ItemCategory category = requireCategory(indexed, request.categoryId());
-    checkVersion(category, request.version());
+    ItemCategory category = requireCategory(indexed, request.getCategoryId());
+    checkVersion(category, request.getVersion());
     validateParent(request, indexed);
-    if (request.status() == CategoryStatus.DISABLED
+    if (request.getStatus() == CategoryStatus.DISABLED
         && indexed.values().stream()
             .anyMatch(
                 c ->
@@ -129,7 +128,7 @@ public class ItemCategoryServiceImpl implements ItemCategoryService {
                         && c.getStatus() == CategoryStatus.ENABLED)) {
       throw new ServiceException("存在启用的子分类，请先停用子分类");
     }
-    checkCode(request.categoryCode(), category.getCategoryId());
+    checkCode(request.getCategoryCode(), category.getCategoryId());
     copyFields(request, category);
     category.setVersion(Math.addExact(category.getVersion(), 1));
     try {
@@ -138,7 +137,7 @@ public class ItemCategoryServiceImpl implements ItemCategoryService {
               category,
               Wrappers.<ItemCategory>lambdaUpdate()
                   .eq(ItemCategory::getCategoryId, category.getCategoryId())
-                  .eq(ItemCategory::getVersion, request.version()));
+                  .eq(ItemCategory::getVersion, request.getVersion()));
       if (rows != 1) {
         throw new ServiceException("分类已变更，请刷新后重试");
       }
@@ -179,20 +178,20 @@ public class ItemCategoryServiceImpl implements ItemCategoryService {
 
   /** 校验上级存在、无循环，启用分类的所有祖先均处于启用状态。 */
   private void validateParent(SaveCategoryRequest request, Map<Long, ItemCategory> indexed) {
-    Long parentId = request.parentId();
+    Long parentId = request.getParentId();
     Set<Long> visited = new HashSet<>();
     while (!Objects.equals(parentId, ROOT_ID)) {
-      if (Objects.equals(parentId, request.categoryId()) || !visited.add(parentId)) {
+      if (Objects.equals(parentId, request.getCategoryId()) || !visited.add(parentId)) {
         throw new ServiceException("上级不能为自身或后代分类");
       }
       ItemCategory parent = requireCategory(indexed, parentId);
-      if (request.status() == CategoryStatus.ENABLED
+      if (request.getStatus() == CategoryStatus.ENABLED
           && parent.getStatus() != CategoryStatus.ENABLED) {
         throw new ServiceException("启用分类的上级及祖先必须启用");
       }
       parentId = parent.getParentId();
     }
-    validateDepth(request.categoryId(), visited.size() + 1, indexed);
+    validateDepth(request.getCategoryId(), visited.size() + 1, indexed);
   }
 
   /** 检查移动后整棵子树的深度，避免只检查当前节点而使后代超限。 */
@@ -244,12 +243,12 @@ public class ItemCategoryServiceImpl implements ItemCategoryService {
 
   /** 仅复制允许客户端维护的业务字段。 */
   private void copyFields(SaveCategoryRequest request, ItemCategory category) {
-    category.setParentId(request.parentId());
-    category.setCategoryCode(request.categoryCode());
-    category.setCategoryName(request.categoryName());
-    category.setSortOrder(request.sortOrder());
-    category.setStatus(request.status());
-    category.setRemark(request.remark());
+    category.setParentId(request.getParentId());
+    category.setCategoryCode(request.getCategoryCode());
+    category.setCategoryName(request.getCategoryName());
+    category.setSortOrder(request.getSortOrder());
+    category.setStatus(request.getStatus());
+    category.setRemark(request.getRemark());
   }
 
   /** 按已过滤的父子索引组装选择树，保持同级顺序。 */
@@ -267,9 +266,9 @@ public class ItemCategoryServiceImpl implements ItemCategoryService {
 
   /** 判断行是否满足全部筛选条件。 */
   private boolean matches(ItemCategory category, CategoryQuery query) {
-    return contains(category.getCategoryCode(), query.categoryCode())
-        && contains(category.getCategoryName(), query.categoryName())
-        && (query.status() == null || query.status().equals(category.getStatus().getCode()));
+    return contains(category.getCategoryCode(), query.getCategoryCode())
+        && contains(category.getCategoryName(), query.getCategoryName())
+        && (query.getStatus() == null || query.getStatus().equals(category.getStatus().getCode()));
   }
 
   /** 对编码和名称执行忽略大小写的字面包含匹配，不把通配符当作 SQL。 */
