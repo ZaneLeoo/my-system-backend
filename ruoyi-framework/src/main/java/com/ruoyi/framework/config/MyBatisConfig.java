@@ -1,5 +1,7 @@
 package com.ruoyi.framework.config;
 
+import com.baomidou.mybatisplus.autoconfigure.SpringBootVFS;
+import com.baomidou.mybatisplus.spring.MybatisSqlSessionFactoryBean;
 import com.ruoyi.common.utils.StringUtils;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -9,8 +11,6 @@ import java.util.List;
 import javax.sql.DataSource;
 import org.apache.ibatis.io.VFS;
 import org.apache.ibatis.session.SqlSessionFactory;
-import org.mybatis.spring.SqlSessionFactoryBean;
-import org.mybatis.spring.boot.autoconfigure.SpringBootVFS;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -108,7 +108,7 @@ public class MyBatisConfig {
     typeAliasesPackage = setTypeAliasesPackage(typeAliasesPackage);
     VFS.addImplClass(SpringBootVFS.class);
 
-    final SqlSessionFactoryBean sessionFactory = new SqlSessionFactoryBean();
+    final MybatisSqlSessionFactoryBean sessionFactory = new MybatisSqlSessionFactoryBean();
     sessionFactory.setDataSource(dataSource);
     sessionFactory.setTypeAliasesPackage(typeAliasesPackage);
     sessionFactory.setMapperLocations(

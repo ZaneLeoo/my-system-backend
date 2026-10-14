@@ -20,7 +20,7 @@
         <spotless.version>3.10.4</spotless.version>
         <google-java-format.version>1.24.0</google-java-format.version>
         <spring-boot.version>4.1.0</spring-boot.version>
-        <mybatis-spring-boot.version>4.1.0</mybatis-spring-boot.version>
+        <mybatis-plus.version>3.5.17</mybatis-plus.version>
         <druid.version>1.2.28</druid.version>
         <yauaa.version>8.2.0</yauaa.version>
         <kaptcha.version>2.3.3</kaptcha.version>
@@ -70,9 +70,9 @@
             </dependency>
 
             <dependency>
-                <groupId>org.mybatis.spring.boot</groupId>
-                <artifactId>mybatis-spring-boot-starter</artifactId>
-                <version>${mybatis-spring-boot.version}</version>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+                <version>${mybatis-plus.version}</version>
             </dependency>
 
             <dependency>
@@ -187,6 +187,11 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.4</version>
+            </plugin>
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
