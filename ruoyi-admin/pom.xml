@@ -16,6 +16,10 @@
     </description>
 
     <dependencies>
+        <dependency>
+            <groupId>com.ruoyi</groupId>
+            <artifactId>my-system-business</artifactId>
+        </dependency>
 
         <!-- spring-boot-devtools -->
         <dependency>

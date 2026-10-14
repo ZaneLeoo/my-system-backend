@@ -38,6 +38,11 @@
     <!-- 依赖声明 -->
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>com.ruoyi</groupId>
+                <artifactId>my-system-business</artifactId>
+                <version>${ruoyi.version}</version>
+            </dependency>
 
             <!-- SpringBoot的依赖配置 -->
             <dependency>
@@ -176,6 +181,7 @@
     </dependencyManagement>
 
     <modules>
+        <module>my-system-business</module>
         <module>ruoyi-admin</module>
         <module>ruoyi-framework</module>
         <module>ruoyi-system</module>

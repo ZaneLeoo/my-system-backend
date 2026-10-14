@@ -1,6 +1,8 @@
 package com.ruoyi.framework.config;
 
 import com.baomidou.mybatisplus.autoconfigure.SpringBootVFS;
+import com.baomidou.mybatisplus.core.config.GlobalConfig;
+import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.baomidou.mybatisplus.spring.MybatisSqlSessionFactoryBean;
 import com.ruoyi.common.utils.StringUtils;
 import java.io.IOException;
@@ -11,6 +13,7 @@ import java.util.List;
 import javax.sql.DataSource;
 import org.apache.ibatis.io.VFS;
 import org.apache.ibatis.session.SqlSessionFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -100,8 +103,10 @@ public class MyBatisConfig {
     return resources.toArray(new Resource[resources.size()]);
   }
 
+  /** 创建兼容旧 XML 的 MP 会话工厂，并接入可选的业务审计填充器。 */
   @Bean
-  public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
+  public SqlSessionFactory sqlSessionFactory(
+      DataSource dataSource, ObjectProvider<MetaObjectHandler> auditHandler) throws Exception {
     String typeAliasesPackage = env.getProperty("mybatis.typeAliasesPackage");
     String mapperLocations = env.getProperty("mybatis.mapperLocations");
     String configLocation = env.getProperty("mybatis.configLocation");
@@ -110,6 +115,9 @@ public class MyBatisConfig {
 
     final MybatisSqlSessionFactoryBean sessionFactory = new MybatisSqlSessionFactoryBean();
     sessionFactory.setDataSource(dataSource);
+    GlobalConfig globalConfig = new GlobalConfig();
+    globalConfig.setMetaObjectHandler(auditHandler.getIfAvailable());
+    sessionFactory.setGlobalConfig(globalConfig);
     sessionFactory.setTypeAliasesPackage(typeAliasesPackage);
     sessionFactory.setMapperLocations(
         resolveMapperLocations(StringUtils.split(mapperLocations, ",")));

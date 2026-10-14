@@ -1,6 +1,6 @@
 # 存货分类表与业务模块设计
 
-状态：待评审设计。VXE 和 MP 框架接入独立完成；本文不代表分类表、分类 CRUD 或分类页面已实现。本轮不执行分类 DDL。
+状态：已实现。业务模块、分类 CRUD、VXE 树表与编辑/详情抽屉已接入；数据库与菜单使用独立增量脚本初始化。
 
 ## 已确认的方向
 
@@ -9,7 +9,9 @@
 - 保留四个创建/更新审计字段和 `del_flag`，逻辑删除使用 MP 的 `@TableLogic(value = "0", delval = "2")`。
 - 基础档案采用列表/树表 + 编辑和详情抽屉；单据采用独立编辑/详情页。
 
-## 分类表草案
+## 分类表结构
+
+以下列出核心字段，完整 DDL（含 CHECK 约束、树锁表及菜单初始化）以增量脚本为准。
 
 ```sql
 CREATE TABLE md_item_category (
@@ -21,6 +23,7 @@ CREATE TABLE md_item_category (
   status CHAR(1) NOT NULL DEFAULT '0' COMMENT '状态：0启用，1停用',
   del_flag CHAR(1) NOT NULL DEFAULT '0' COMMENT '删除标志：0正常，2删除',
   remark VARCHAR(500) NOT NULL DEFAULT '' COMMENT '备注',
+  version INT NOT NULL DEFAULT 0 COMMENT '编辑版本号',
   create_by VARCHAR(64) NOT NULL COMMENT '创建账号',
   create_time DATETIME NOT NULL COMMENT '创建时间',
   update_by VARCHAR(64) DEFAULT NULL COMMENT '最后修改账号',
@@ -43,6 +46,9 @@ CREATE TABLE md_item_category (
 - 存在未删除子节点时禁止删除；以后存货表接入后，再增加存货引用校验。首期不查询尚不存在的存货表。
 - 删除使用 MP 逻辑删除；修改与正常详情查询均排除已删除记录，不开放恢复、级联删除或复用编码入口。
 - 分类首期为全系统共享档案，由角色权限控制维护；不套用部门数据范围或引入多租户模型。
+- 最大深度为 32 层，移动节点时同时检查整个子树的深度。
+- `md_item_category_lock` 保存一条固定锁记录。所有新增、修改、删除在事务开始时锁住该行，再读取最新分类树校验，避免并发互相移动成环、删除父节点与新增子节点竞态。锁随事务结束释放，不依赖 JVM 单实例锁。
+- 修改和删除必须携带当前 `version`。修改成功后递增版本，旧页面提交被拒绝；删除不开放版本绕过入口。
 
 ## 后端模块与业务代码
 
@@ -76,11 +82,11 @@ CREATE TABLE md_item_category (
 | `GET /{id}`    | 分类详情                                         | `query`  |
 | `POST`         | 新增分类                                         | `add`    |
 | `PUT`          | 修改分类及状态                                   | `edit`   |
-| `DELETE /{id}` | 校验后逻辑删除                                   | `remove` |
+| `DELETE /{id}?version={version}` | 校验后逻辑删除                         | `remove` |
 
 沿用 `AjaxResult` 响应及 `@PreAuthorize`、`@Log`。首期树形分类不分页，编码/名称/状态过滤时保留匹配节点的祖先以呈现层级；父节点仅用于上下文时不把它算作匹配结果。
 
-前端菜单位于“基础资料 → 存货分类”，页面使用 VXE 树表和 Element Plus 编辑/详情抽屉，保持筛选及展开状态；上级选择使用树选择器。分类首期不加入导入、导出和树拖拽改父级，先验证基础规则。
+前端菜单位于“基础资料 → 料品分类”，页面使用 VXE 树表和 Element Plus 编辑/详情抽屉，保持筛选及展开状态；上级选择使用树选择器。分类首期不加入导入、导出和树拖拽改父级，先验证基础规则。
 
 SQL 作为独立增量脚本交付，不重跑若依初始化脚本，不删除或重建当前数据。分类后端验证通过后再开发分类前端。
 
@@ -92,6 +98,16 @@ SQL 作为独立增量脚本交付，不重跑若依初始化脚本，不删除�
 - 逻辑删除通过实体注解逐表开启，不给现有若依实体批量添加注解。MP 生成的 CRUD 自动处理逻辑删除；手写 XML 和原生 SQL 必须明确过滤 `del_flag`。
 - 隔离集成测试验证单一会话工厂、MP 自增新增及中文读取、删除后记录保留且标记为 2、MP 查询屏蔽删除记录、禁止更新删除记录，以及旧岗位 XML 的 PageHelper 分页。
 
-分类实现阶段还需测试：重复编码、失效上级、自身/后代移动、启停限制、删除父节点、删除审计、无权限访问及真实 MySQL 字符编码。
+分类验证覆盖重复编码、失效上级、自身/后代移动、启停限制、删除父节点、删除审计、版本冲突、无权限访问和并发互移。真实 MySQL 验证中文与大小写不敏感唯一性。
+
+## 本地初始化与代码入口
+
+- 增量脚本：`sql/migrations/20261014_01_item_category.sql`，可重复执行，不插入演示分类、不修改已有业务数据。新 Docker 数据卷会在若依脚本之后自动执行。
+- 已有数据库：运行 `powershell -File scripts/apply-item-category.ps1`，使用容器内部数据库凭据，不在命令行展开密码。
+- 菜单仅默认授权管理员角色；其他角色在角色管理中分配分类列表、查询、新增、修改、删除权限。重新登录刷新菜单与权限缓存。
+- 后端：`my-system-business/src/main/java/com/ruoyi/business/masterdata/category`。
+- 审计：`BusinessAuditHandler`，通过手工 `MyBatisConfig` 显式注册到 `GlobalConfig`。
+- 前端：`src/views/masterdata/item-category/index.vue`，路由由数据库菜单动态加载，不新增硬编码路由。
+- 集成测试使用隔离 H2 数据库；真实接口和浏览器验证脚本、截图保存在忽略的本地日志目录，前端提交只包含正式页面、API 和类型。
 
 资料：[MP 安装说明](https://baomidou.com/getting-started/install/)、[逻辑删除说明](https://baomidou.com/guides/logic-delete/)。
