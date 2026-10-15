@@ -1,6 +1,7 @@
 package com.ruoyi.framework.mybatis;
 
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
+import com.ruoyi.common.constant.DateTimeConstants;
 import com.ruoyi.common.constant.HttpStatus;
 import com.ruoyi.common.core.domain.AuditEntity;
 import com.ruoyi.common.exception.ServiceException;
@@ -18,7 +19,7 @@ public class BusinessAuditHandler implements MetaObjectHandler {
   public void insertFill(MetaObject metaObject) {
     if (metaObject.getOriginalObject() instanceof AuditEntity) {
       String username = currentUsername();
-      LocalDateTime now = LocalDateTime.now();
+      LocalDateTime now = LocalDateTime.now(DateTimeConstants.BUSINESS_ZONE);
       setFieldValByName("createBy", username, metaObject);
       setFieldValByName("createTime", now, metaObject);
       setFieldValByName("updateBy", username, metaObject);
@@ -31,7 +32,8 @@ public class BusinessAuditHandler implements MetaObjectHandler {
   public void updateFill(MetaObject metaObject) {
     if (metaObject.getOriginalObject() instanceof AuditEntity) {
       setFieldValByName("updateBy", currentUsername(), metaObject);
-      setFieldValByName("updateTime", LocalDateTime.now(), metaObject);
+      setFieldValByName(
+          "updateTime", LocalDateTime.now(DateTimeConstants.BUSINESS_ZONE), metaObject);
     }
   }
 

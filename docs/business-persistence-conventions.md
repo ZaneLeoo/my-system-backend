@@ -14,6 +14,7 @@
 `ruoyi-framework` 的 `BusinessAuditHandler` 适用于所有 `AuditEntity` 子类。手工 `MyBatisConfig` 通过 `GlobalConfig` 显式接入它；不依赖仅声明 Bean 后的自动发现。
 
 - 新增：使用当前登录用户名和一次采样的当前时间，填充创建及修改信息，覆盖调用方指定的审计值。
+- 审计时间明确使用 `Asia/Shanghai`（UTC+8），不依赖 JVM 默认时区；数据库 `DATETIME` 和 `LocalDateTime` 保存北京时间的本地钟面值。
 - 修改和逻辑删除：覆盖本次修改人、修改时间。创建字段设置 `updateStrategy = NEVER`，MP 自动生成的更新不会改写创建信息。
 - 没有有效登录操作者时拒绝写入，不默认使用 `system`。定时任务、导入、Agent 等后续必须显式设计操作者上下文。
 - 普通更新使用 `updateById(entity)` 或 `update(entity, wrapper)`，必须传入非空实体。逻辑删除使用 `deleteById(entity)`，保证删除审计填充。
@@ -28,3 +29,4 @@
 - Entity 只负责持久化，VO 明确声明接口数据，避免继承关系变化导致数据库内部字段被意外返回。
 - DTO 提供无参构造供 Spring/Jackson 属性绑定；保存参数的 Setter 统一清理编码、名称及备注的首尾空白，备注缺失或 null 时为 `""`。带参构造也复用 Setter，再由 Bean Validation 校验规范化后的值。
 - 布尔属性使用 `isMatched()`、`isDisabled()` 等标准 Getter，JSON 字段仍为 `matched`、`disabled`。
+- `LocalDateTime` 通过公共 Jackson 配置统一输出 `yyyy-MM-dd HH:mm:ss`，例如 `2026-02-02 12:00:00`，不附带 `T`、毫秒或时区后缀。序列化不对已有本地时间再加 8 小时；旧式 `Date` 继续沿用 `spring.jackson` 的 GMT+8 配置。此约定仅调整输出，已有 ISO 日期时间请求解析保持兼容。

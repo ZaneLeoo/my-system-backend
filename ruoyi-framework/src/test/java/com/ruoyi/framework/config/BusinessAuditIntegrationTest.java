@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.ruoyi.common.constant.DateTimeConstants;
 import com.ruoyi.common.constant.LogicDeleteConstants;
 import com.ruoyi.common.core.domain.AuditEntity;
 import com.ruoyi.common.core.domain.BusinessEntity;
@@ -20,13 +21,16 @@ import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.UUID;
 import javax.sql.DataSource;
+import org.apache.ibatis.reflection.SystemMetaObject;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -34,6 +38,35 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 /** 验证公共基类可用于分类之外的实体，并保护创建信息及操作者身份。 */
 class BusinessAuditIntegrationTest {
+  /** UTC 部署下新增、更新及逻辑删除共用的填充路径仍采样北京时间。 */
+  @Test
+  @ResourceLock("java.util.TimeZone.default")
+  void auditTimeDoesNotDependOnJvmDefaultZone() {
+    TimeZone previous = TimeZone.getDefault();
+    try {
+      TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+      login("timezone-probe");
+      BusinessAuditHandler handler = new BusinessAuditHandler();
+      Probe probe = new Probe();
+      LocalDateTime before = LocalDateTime.now(DateTimeConstants.BUSINESS_ZONE);
+      handler.insertFill(SystemMetaObject.forObject(probe));
+      LocalDateTime after = LocalDateTime.now(DateTimeConstants.BUSINESS_ZONE);
+      assertFalse(probe.getCreateTime().isBefore(before));
+      assertFalse(probe.getCreateTime().isAfter(after));
+      assertEquals(probe.getCreateTime(), probe.getUpdateTime());
+      LocalDateTime created = probe.getCreateTime();
+      probe.setUpdateTime(LocalDateTime.of(2000, 1, 1, 0, 0));
+      before = LocalDateTime.now(DateTimeConstants.BUSINESS_ZONE);
+      handler.updateFill(SystemMetaObject.forObject(probe));
+      after = LocalDateTime.now(DateTimeConstants.BUSINESS_ZONE);
+      assertFalse(probe.getUpdateTime().isBefore(before));
+      assertFalse(probe.getUpdateTime().isAfter(after));
+      assertEquals(created, probe.getCreateTime());
+    } finally {
+      TimeZone.setDefault(previous);
+    }
+  }
+
   /** 每个用例结束后清除线程身份，避免影响旧实体兼容性测试。 */
   @AfterEach
   void clearIdentity() {
