@@ -22,6 +22,7 @@ services:
       - ./sql/ry_20260417.sql:/docker-entrypoint-initdb.d/01-ruoyi.sql:ro
       - ./sql/quartz.sql:/docker-entrypoint-initdb.d/02-quartz.sql:ro
       - ./sql/migrations/20261014_01_item_category.sql:/docker-entrypoint-initdb.d/03-item-category.sql:ro
+      - ./sql/migrations/20261015_01_unit.sql:/docker-entrypoint-initdb.d/04-unit.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysql -h 127.0.0.1 -u root -Nse 'SELECT 1' >/dev/null"]
       interval: 5s

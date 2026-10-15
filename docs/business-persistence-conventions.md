@@ -29,4 +29,6 @@
 - Entity 只负责持久化，VO 明确声明接口数据，避免继承关系变化导致数据库内部字段被意外返回。
 - DTO 提供无参构造供 Spring/Jackson 属性绑定；保存参数的 Setter 统一清理编码、名称及备注的首尾空白，备注缺失或 null 时为 `""`。带参构造也复用 Setter，再由 Bean Validation 校验规范化后的值。
 - 布尔属性使用 `isMatched()`、`isDisabled()` 等标准 Getter，JSON 字段仍为 `matched`、`disabled`。
+- 普通业务分页使用公共 `PageQuery` 和 `PageResult<T>`，返回 `R<PageResult<具体VO>>`，其中 data 仅包含 rows/total；沿用 PageHelper，转换 VO 前保留总数并清理线程分页状态。排序字段在具体业务中建立白名单，不能直接信任客户端字段名。旧接口保留 `TableDataInfo`。
+- 共用启停状态使用 `EnableStatus`（0 启用、1 停用）；既有分类状态类本期保持兼容，不据此迁移全部历史状态枚举。
 - `LocalDateTime` 通过公共 Jackson 配置统一输出 `yyyy-MM-dd HH:mm:ss`，例如 `2026-02-02 12:00:00`，不附带 `T`、毫秒或时区后缀。序列化不对已有本地时间再加 8 小时；旧式 `Date` 继续沿用 `spring.jackson` 的 GMT+8 配置。此约定仅调整输出，已有 ISO 日期时间请求解析保持兼容。

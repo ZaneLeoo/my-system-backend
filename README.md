@@ -37,7 +37,7 @@ java -jar ruoyi-admin/target/ruoyi-admin.jar
 
 数据库名、用户名默认为 `my_system`，密码保存在被 Git 忽略的 `.env` 中。
 Docker Compose 和 Spring Boot 读取同一份 `.env`。上传文件在 `data/upload`，日志在 `logs`。
-MySQL 首次创建数据卷时，按顺序执行 `sql/ry_20260417.sql` 和 `sql/quartz.sql`。
+MySQL 首次创建数据卷时，按顺序执行若依、Quartz、料品分类和计量单位初始化脚本。
 SQL 脚本显式执行 `SET NAMES utf8mb4`，客户端配置也固定为 `utf8mb4`，确保 UTF-8 中文按正确编码导入。
 MySQL 启动脚本会将客户端配置复制到容器内并设置 `0644` 权限，避免 Windows 挂载文件因权限过宽而被忽略。
 数据卷、网络均使用 `my-system-` 前缀，数据库端口仅绑定本机。
@@ -49,6 +49,10 @@ docker compose stop
 ```
 
 停止容器会保留数据卷。已有数据卷不会重复执行初始化 SQL。
+
+已有数据库追加基础资料功能时，分别运行 `scripts/apply-item-category.ps1` 和 `scripts/apply-unit.ps1`，不要重建数据卷。计量单位会预置 10 个常用单位，脚本可重复执行而不覆盖已有档案；菜单默认授权管理员，新增菜单后重新登录刷新权限。
+
+业务设计见 [料品分类](docs/masterdata-item-category-design.md)、[计量单位](docs/masterdata-unit-design.md) 和 [公共持久化与接口约定](docs/business-persistence-conventions.md)。
 
 ## 格式化与构建
 
