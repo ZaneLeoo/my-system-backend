@@ -37,7 +37,7 @@ java -jar ruoyi-admin/target/ruoyi-admin.jar
 
 数据库名、用户名默认为 `my_system`，密码保存在被 Git 忽略的 `.env` 中。
 Docker Compose 和 Spring Boot 读取同一份 `.env`。上传文件在 `data/upload`，日志在 `logs`。
-MySQL 首次创建数据卷时，按顺序执行若依、Quartz、料品分类、计量单位和料品档案初始化脚本。
+MySQL 首次创建数据卷时，按顺序执行若依、Quartz、料品分类、计量单位、料品档案和参照权限初始化脚本。
 SQL 脚本显式执行 `SET NAMES utf8mb4`，客户端配置也固定为 `utf8mb4`，确保 UTF-8 中文按正确编码导入。
 MySQL 启动脚本会将客户端配置复制到容器内并设置 `0644` 权限，避免 Windows 挂载文件因权限过宽而被忽略。
 数据卷、网络均使用 `my-system-` 前缀，数据库端口仅绑定本机。
@@ -53,6 +53,8 @@ docker compose stop
 已有数据库追加基础资料功能时，分别运行 `scripts/apply-item-category.ps1` 和 `scripts/apply-unit.ps1`，不要重建数据卷。计量单位会预置 10 个常用单位，脚本可重复执行而不覆盖已有档案；菜单默认授权管理员，新增菜单后重新登录刷新权限。
 
 料品档案的已有数据库执行入口为 `scripts/apply-item.ps1`，不预置演示料品，不重建数据库。
+
+基础档案参照权限执行入口为 `scripts/apply-reference.ps1`，默认授权管理员；其他角色在角色管理中独立分配。只读接口与授权规则见 [基础档案参照](docs/masterdata-reference-design.md)。
 
 业务设计见 [料品分类](docs/masterdata-item-category-design.md)、[计量单位](docs/masterdata-unit-design.md)、[料品档案](docs/masterdata-item-design.md) 和 [公共持久化与接口约定](docs/business-persistence-conventions.md)。
 

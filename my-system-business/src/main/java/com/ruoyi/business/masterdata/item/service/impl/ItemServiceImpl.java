@@ -1,9 +1,6 @@
 package com.ruoyi.business.masterdata.item.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.github.pagehelper.PageHelper;
-import com.github.pagehelper.PageInfo;
 import com.ruoyi.business.masterdata.category.domain.CategoryStatus;
 import com.ruoyi.business.masterdata.category.domain.ItemCategory;
 import com.ruoyi.business.masterdata.category.mapper.ItemCategoryMapper;
@@ -12,17 +9,15 @@ import com.ruoyi.business.masterdata.item.dto.ItemQuery;
 import com.ruoyi.business.masterdata.item.dto.SaveItemRequest;
 import com.ruoyi.business.masterdata.item.mapper.ItemMapper;
 import com.ruoyi.business.masterdata.item.service.ItemService;
+import com.ruoyi.business.masterdata.item.service.support.ItemReadSupport;
 import com.ruoyi.business.masterdata.item.vo.ItemView;
 import com.ruoyi.business.masterdata.unit.domain.Unit;
 import com.ruoyi.business.masterdata.unit.mapper.UnitMapper;
 import com.ruoyi.business.masterdata.unit.vo.UnitOption;
-import com.ruoyi.common.constant.LogicDeleteConstants;
 import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.enums.EnableStatus;
 import com.ruoyi.common.exception.ServiceException;
 import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,81 +28,27 @@ public class ItemServiceImpl implements ItemService {
   private final ItemMapper mapper;
   private final ItemCategoryMapper categories;
   private final UnitMapper units;
+  private final ItemReadSupport read;
 
   /** 注入数据访问组件，不形成双向 Service 依赖。 */
-  public ItemServiceImpl(ItemMapper mapper, ItemCategoryMapper categories, UnitMapper units) {
+  public ItemServiceImpl(
+      ItemMapper mapper, ItemCategoryMapper categories, UnitMapper units, ItemReadSupport read) {
     this.mapper = mapper;
     this.categories = categories;
     this.units = units;
+    this.read = read;
   }
 
-  /** 先确定分类后代，再分页执行单次关联查询，转换前保留总数。 */
+  /** 使用公共只读组件查询分页列表。 */
   @Override
   public PageResult<ItemView> list(ItemQuery query) {
-    if (query.getPageNum() == null
-        || query.getPageNum() < 1
-        || query.getPageSize() == null
-        || query.getPageSize() < 1
-        || query.getPageSize() > 100) throw new ServiceException("分页参数无效");
-    Map<Long, ItemCategory> tree = categoryIndex();
-    QueryWrapper<Item> wrapper = visibleQuery();
-    if (query.getItemCode() != null) wrapper.like("i.item_code", escape(query.getItemCode()));
-    if (query.getItemName() != null) wrapper.like("i.item_name", escape(query.getItemName()));
-    if (query.getSpecification() != null)
-      wrapper.like("i.specification", escape(query.getSpecification()));
-    if (query.getCategoryId() != null) {
-      Set<Long> ids = new HashSet<>();
-      ids.add(query.getCategoryId());
-      boolean changed;
-      do {
-        changed = false;
-        for (ItemCategory c : tree.values())
-          if (ids.contains(c.getParentId())) changed |= ids.add(c.getCategoryId());
-      } while (changed);
-      wrapper.in("i.category_id", ids);
-    }
-    if (query.getBaseUnitId() != null) wrapper.eq("i.base_unit_id", query.getBaseUnitId());
-    if (query.getPurchaseUnitId() != null)
-      wrapper.eq("i.purchase_unit_id", query.getPurchaseUnitId());
-    if (query.getSalesUnitId() != null) wrapper.eq("i.sales_unit_id", query.getSalesUnitId());
-    if (query.getStatus() != null)
-      wrapper.eq("i.status", EnableStatus.fromCode(query.getStatus()).getCode());
-    if (query.getPurchaseEnabled() != null)
-      wrapper.eq("i.purchase_enabled", query.getPurchaseEnabled());
-    String column =
-        switch (query.getSortField() == null ? "itemCode" : query.getSortField()) {
-          case "itemCode" -> "i.item_code";
-          case "itemName" -> "i.item_name";
-          case "specification" -> "i.specification";
-          case "updateTime" -> "i.update_time";
-          default -> throw new ServiceException("不支持的排序字段");
-        };
-    boolean asc =
-        switch (query.getSortDirection() == null ? "" : query.getSortDirection()) {
-          case "asc" -> true;
-          case "desc" -> false;
-          default -> throw new ServiceException("排序方向无效");
-        };
-    wrapper.orderBy(true, asc, column).orderByAsc("i.item_id");
-    try {
-      PageHelper.startPage(query.getPageNum(), query.getPageSize()).setReasonable(false);
-      List<ItemView> rows = mapper.selectViews(wrapper);
-      long total = new PageInfo<>(rows).getTotal();
-      rows.forEach(row -> row.setCategoryPath(categoryPath(row.getCategoryId(), tree)));
-      return new PageResult<>(rows, total);
-    } finally {
-      PageHelper.clearPage();
-    }
+    return read.list(query);
   }
 
-  /** 查询未删除详情，并补齐分类路径。 */
+  /** 使用公共只读组件查询最新详情。 */
   @Override
   public ItemView detail(Long id) {
-    List<ItemView> found = mapper.selectViews(visibleQuery().eq("i.item_id", id));
-    if (found.isEmpty()) throw new ServiceException("料品不存在或已删除");
-    ItemView view = found.get(0);
-    view.setCategoryPath(categoryPath(view.getCategoryId(), categoryIndex()));
-    return view;
+    return read.detail(id);
   }
 
   /** 取得分类锁后验证所有引用，新增后返回实际落库值。 */
@@ -238,29 +179,6 @@ public class ItemServiceImpl implements ItemService {
     return item;
   }
 
-  /** 显式过滤手写关联查询的逻辑删除记录。 */
-  private QueryWrapper<Item> visibleQuery() {
-    return new QueryWrapper<Item>().eq("i.del_flag", LogicDeleteConstants.NOT_DELETED);
-  }
-
-  /** 一次加载分类索引，避免每条料品查询祖先。 */
-  private Map<Long, ItemCategory> categoryIndex() {
-    return categories.selectList(null).stream()
-        .collect(Collectors.toMap(ItemCategory::getCategoryId, Function.identity()));
-  }
-
-  /** 根据父子关系计算完整名称路径，防御异常循环。 */
-  private String categoryPath(Long id, Map<Long, ItemCategory> index) {
-    LinkedList<String> names = new LinkedList<>();
-    Set<Long> visited = new HashSet<>();
-    while (id != null && index.containsKey(id) && visited.add(id)) {
-      ItemCategory c = index.get(id);
-      names.addFirst(c.getCategoryName());
-      id = c.getParentId();
-    }
-    return String.join(" / ", names);
-  }
-
   /** 唯一校验包含已删除编码。 */
   private void checkCode(String code, Long id) {
     if (mapper.countCode(code, id) > 0) throw occupied();
@@ -274,11 +192,6 @@ public class ItemServiceImpl implements ItemService {
   /** 返回统一版本冲突提示。 */
   private ServiceException stale() {
     return new ServiceException("料品已变更，请刷新后重试");
-  }
-
-  /** 转义包含查询的通配符。 */
-  private String escape(String text) {
-    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
   }
 
   /** 只复制允许维护的字段，绝不复制审计和内部标记。 */

@@ -5,6 +5,20 @@ import jakarta.validation.constraints.*;
 
 /** 料品档案ItemQuery。 */
 public class ItemQuery extends PageQuery {
+  /** 跨编码、名称、规格的包含关键词。 */
+  @Size(max = 200)
+  private String keyword;
+
+  /** 返回已清理的关键词。 */
+  public String getKeyword() {
+    return keyword;
+  }
+
+  /** 空白关键词按未筛选处理。 */
+  public void setKeyword(String keyword) {
+    this.keyword = keyword == null || keyword.isBlank() ? null : keyword.strip();
+  }
+
   /** 料品编码。 */
   @Size(max = 64)
   private String itemCode;

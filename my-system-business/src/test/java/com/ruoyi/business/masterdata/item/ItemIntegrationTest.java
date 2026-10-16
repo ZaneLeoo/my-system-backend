@@ -14,7 +14,10 @@ import com.ruoyi.business.masterdata.item.controller.ItemController;
 import com.ruoyi.business.masterdata.item.dto.*;
 import com.ruoyi.business.masterdata.item.service.ItemService;
 import com.ruoyi.business.masterdata.item.service.impl.ItemServiceImpl;
+import com.ruoyi.business.masterdata.item.service.support.ItemReadSupport;
 import com.ruoyi.business.masterdata.item.vo.ItemView;
+import com.ruoyi.business.masterdata.reference.controller.ReferenceController;
+import com.ruoyi.business.masterdata.reference.service.ReferenceService;
 import com.ruoyi.business.masterdata.unit.dto.SaveUnitRequest;
 import com.ruoyi.business.masterdata.unit.service.UnitService;
 import com.ruoyi.business.masterdata.unit.service.impl.UnitServiceImpl;
@@ -60,7 +63,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import tools.jackson.databind.json.JsonMapper;
 
-/** 单位档案的真实 MP、分页、事务、权限和 MVC 集成验证。 */
+/** 料品档案及参照的真实 MP、分页、事务、权限和 MVC 集成验证。 */
 class ItemIntegrationTest {
   private AnnotationConfigApplicationContext context;
   private ItemService service;
@@ -120,7 +123,8 @@ class ItemIntegrationTest {
     JsonMapper.Builder builder = JsonMapper.builder();
     context.getBean(JacksonConfig.class).localDateTimeCustomizer().customize(builder);
     mvc =
-        MockMvcBuilders.standaloneSetup(context.getBean(ItemController.class))
+        MockMvcBuilders.standaloneSetup(
+                context.getBean(ItemController.class), context.getBean(ReferenceController.class))
             .setControllerAdvice(new BusinessExceptionHandler())
             .setMessageConverters(new JacksonJsonHttpMessageConverter(builder.build()))
             .build();
@@ -398,6 +402,119 @@ class ItemIntegrationTest {
     }
   }
 
+  /** 仅参照权限可查询和回显，不能访问档案列表、维护及其他类型参照。 */
+  @Test
+  void referencePermissionsAreIndependent() throws Exception {
+    ItemView row = service.create(request("REF"));
+    login("reference-only", Set.of("masterdata:item:reference"));
+    mvc.perform(get("/masterdata/reference/items"))
+        .andExpect(jsonPath("$.code").value(200))
+        .andExpect(jsonPath("$.data.total").value(1))
+        .andExpect(jsonPath("$.data.rows[0].createBy").doesNotExist())
+        .andExpect(jsonPath("$.data.rows[0].delFlag").doesNotExist());
+    mvc.perform(get("/masterdata/reference/items/resolve").param("ids", row.getItemId().toString()))
+        .andExpect(jsonPath("$.data[0].itemId").value(row.getItemId()));
+    mvc.perform(get("/masterdata/reference/items/category-options"))
+        .andExpect(jsonPath("$.code").value(200));
+    ReferenceController controller = context.getBean(ReferenceController.class);
+    assertThrows(AccessDeniedException.class, controller::units);
+    assertThrows(AccessDeniedException.class, controller::categories);
+    assertThrows(
+        AccessDeniedException.class,
+        () -> context.getBean(ItemController.class).list(new ItemQuery()));
+    assertThrows(
+        AccessDeniedException.class,
+        () -> context.getBean(ItemController.class).create(request("DENY")));
+    login("unit-reference", Set.of("masterdata:unit:reference"));
+    mvc.perform(get("/masterdata/reference/units")).andExpect(jsonPath("$.code").value(200));
+    assertThrows(AccessDeniedException.class, controller::itemCategories);
+    login("category-reference", Set.of("masterdata:category:reference"));
+    mvc.perform(get("/masterdata/reference/categories"))
+        .andExpect(jsonPath("$.data[0].disabled").value(false));
+    login("maintenance-only", Set.of("masterdata:item:list"));
+    assertThrows(AccessDeniedException.class, controller::itemCategories);
+  }
+
+  /** 关键词按 OR 匹配，分类后代与采购约束按 AND，客户端不能扩大启停范围。 */
+  @Test
+  void referenceSearchPaginationAndEnabledBoundary() throws Exception {
+    Long child = categories.create(category("REFCHILD", categoryId)).getCategoryId();
+    SaveItemRequest a = request("MATCH-A");
+    a.setCategoryId(child);
+    service.create(a);
+    SaveItemRequest b = request("B");
+    b.setSpecification("MATCH规格");
+    service.create(b);
+    SaveItemRequest c = request("C");
+    c.setItemName("MATCH名称");
+    c.setPurchaseEnabled(false);
+    service.create(c);
+    SaveItemRequest d = request("MATCH-D");
+    d.setStatus(EnableStatus.DISABLED);
+    ItemView inactive = service.create(d);
+    ItemView deleted = service.create(request("MATCH-DELETED"));
+    service.delete(deleted.getItemId(), 0);
+    login("reference", Set.of("masterdata:item:reference"));
+    mvc.perform(
+            get("/masterdata/reference/items")
+                .param("keyword", " MATCH ")
+                .param("pageSize", "2")
+                .param("pageNum", "2")
+                .param("status", "1")
+                .param("sortField", "itemCode")
+                .param("sortDirection", "desc"))
+        .andExpect(jsonPath("$.data.total").value(3))
+        .andExpect(jsonPath("$.data.rows[0].itemCode").value("B"));
+    mvc.perform(
+            get("/masterdata/reference/items")
+                .param("keyword", "MATCH")
+                .param("categoryId", categoryId.toString())
+                .param("purchaseOnly", "true"))
+        .andExpect(jsonPath("$.data.total").value(2));
+    mvc.perform(get("/masterdata/reference/items").param("categoryId", child.toString()))
+        .andExpect(jsonPath("$.data.total").value(1))
+        .andExpect(jsonPath("$.data.rows[0].categoryPath").value("ROOT / REFCHILD"));
+    mvc.perform(get("/masterdata/reference/items").param("keyword", "%"))
+        .andExpect(jsonPath("$.data.total").value(0));
+    mvc.perform(
+            get("/masterdata/reference/items/resolve")
+                .param(
+                    "ids",
+                    inactive.getItemId() + "," + deleted.getItemId() + "," + inactive.getItemId()))
+        .andExpect(jsonPath("$.data.length()").value(1))
+        .andExpect(jsonPath("$.data[0].status").value("1"));
+  }
+
+  /** 参照参数受边界约束，批量回显保留请求顺序，单位选项完整且包含停用项。 */
+  @Test
+  void referenceValidationAndCompleteOptions() throws Exception {
+    ItemView a = service.create(request("A"));
+    ItemView b = service.create(request("B"));
+    for (int i = 0; i < 101; i++) {
+      SaveUnitRequest u = unit("REFERENCE" + i);
+      u.setStatus(EnableStatus.DISABLED);
+      units.create(u);
+    }
+    mvc.perform(get("/masterdata/reference/units"))
+        .andExpect(jsonPath("$.data.length()").value(102));
+    mvc.perform(
+            get("/masterdata/reference/items/resolve")
+                .param("ids", b.getItemId() + "," + a.getItemId()))
+        .andExpect(jsonPath("$.data[0].itemId").value(b.getItemId()));
+    for (String invalid : List.of("0", "-1", "abc"))
+      mvc.perform(get("/masterdata/reference/items/resolve").param("ids", invalid))
+          .andExpect(jsonPath("$.code").value(500));
+    mvc.perform(
+            get("/masterdata/reference/items/resolve")
+                .param("ids", String.join(",", Collections.nCopies(101, "1"))))
+        .andExpect(jsonPath("$.code").value(500));
+    mvc.perform(get("/masterdata/reference/items").param("pageSize", "101"))
+        .andExpect(jsonPath("$.code").value(500));
+    mvc.perform(get("/masterdata/reference/items").param("sortField", "updateTime"))
+        .andExpect(jsonPath("$.code").value(500));
+    assertNull(PageHelper.getLocalPage());
+  }
+
   /** 构建普通 Java 料品请求并复用 Setter 规范化。 */
   private SaveItemRequest request(String code) {
     SaveItemRequest r = new SaveItemRequest();
@@ -524,6 +641,9 @@ class ItemIntegrationTest {
     UnitServiceImpl.class,
     ItemController.class,
     ItemServiceImpl.class,
+    ItemReadSupport.class,
+    ReferenceController.class,
+    ReferenceService.class,
     ItemCategoryServiceImpl.class,
     PermissionService.class,
     PageHelperAutoConfiguration.class,
