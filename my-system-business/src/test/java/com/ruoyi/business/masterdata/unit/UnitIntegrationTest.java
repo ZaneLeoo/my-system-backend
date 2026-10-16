@@ -97,6 +97,7 @@ class UnitIntegrationTest {
     try (var sql = schemaConnection.createStatement()) {
       for (String statement : schema.split(";")) if (!statement.isBlank()) sql.execute(statement);
     }
+    com.ruoyi.business.masterdata.common.MasterDataTestSchema.create(schemaConnection);
     service = context.getBean(UnitService.class);
     RequestContextHolder.setRequestAttributes(
         new ServletRequestAttributes(new MockHttpServletRequest()));
@@ -400,7 +401,10 @@ class UnitIntegrationTest {
   @Configuration
   @EnableTransactionManagement
   @EnableMethodSecurity
-  @MapperScan("com.ruoyi.business.masterdata.unit.mapper")
+  @MapperScan({
+    "com.ruoyi.business.masterdata.unit.mapper",
+    "com.ruoyi.business.masterdata.common.mapper"
+  })
   @Import({
     MyBatisConfig.class,
     BusinessAuditHandler.class,

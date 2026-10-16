@@ -98,6 +98,7 @@ class ItemCategoryIntegrationTest {
         }
       }
     }
+    com.ruoyi.business.masterdata.common.MasterDataTestSchema.create(schemaConnection);
     service = context.getBean(ItemCategoryService.class);
     RequestContextHolder.setRequestAttributes(
         new ServletRequestAttributes(new MockHttpServletRequest()));
@@ -482,7 +483,10 @@ class ItemCategoryIntegrationTest {
   @Configuration
   @EnableTransactionManagement
   @EnableMethodSecurity
-  @MapperScan("com.ruoyi.business.masterdata.category.mapper")
+  @MapperScan({
+    "com.ruoyi.business.masterdata.category.mapper",
+    "com.ruoyi.business.masterdata.common.mapper"
+  })
   @Import({
     MyBatisConfig.class,
     BusinessAuditHandler.class,

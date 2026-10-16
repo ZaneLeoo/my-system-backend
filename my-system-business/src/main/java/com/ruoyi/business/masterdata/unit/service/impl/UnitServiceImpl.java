@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import com.ruoyi.business.masterdata.common.mapper.MasterDataReferenceMapper;
 import com.ruoyi.business.masterdata.unit.domain.Unit;
 import com.ruoyi.business.masterdata.unit.dto.SaveUnitRequest;
 import com.ruoyi.business.masterdata.unit.dto.UnitQuery;
@@ -24,10 +25,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class UnitServiceImpl implements UnitService {
   private final UnitMapper mapper;
+  private final MasterDataReferenceMapper references;
 
   /** 注入单位数据访问。 */
-  public UnitServiceImpl(UnitMapper mapper) {
+  public UnitServiceImpl(UnitMapper mapper, MasterDataReferenceMapper references) {
     this.mapper = mapper;
+    this.references = references;
   }
 
   /** 在唯一一次列表查询前开启分页，转换 VO 前保留总数，最终清理线程状态。 */
@@ -95,6 +98,10 @@ public class UnitServiceImpl implements UnitService {
   @Transactional(rollbackFor = Exception.class)
   public void update(SaveUnitRequest request) {
     Unit unit = lockExisting(request.getUnitId(), request.getVersion());
+    if (request.getStatus() == EnableStatus.DISABLED
+        && references.unitItems(unit.getUnitId(), true) > 0) {
+      throw new ServiceException("存在启用料品引用，请先调整或停用料品");
+    }
     checkUnique(request, unit.getUnitId());
     copyFields(request, unit);
     if (unit.getVersion() == Integer.MAX_VALUE) throw new ServiceException("单位版本已达上限，请联系管理员");
@@ -117,6 +124,7 @@ public class UnitServiceImpl implements UnitService {
   @Transactional(rollbackFor = Exception.class)
   public void delete(Long id, Integer version) {
     Unit unit = lockExisting(id, version);
+    if (references.unitItems(id, false) > 0) throw new ServiceException("存在料品引用，不能删除单位");
     if (mapper.deleteById(unit) != 1) throw new ServiceException("单位已变更，请刷新后重试");
   }
 

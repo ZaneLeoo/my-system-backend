@@ -12,6 +12,7 @@ import com.ruoyi.business.masterdata.category.mapper.ItemCategoryMapper;
 import com.ruoyi.business.masterdata.category.service.ItemCategoryService;
 import com.ruoyi.business.masterdata.category.vo.CategoryTreeNode;
 import com.ruoyi.business.masterdata.category.vo.CategoryView;
+import com.ruoyi.business.masterdata.common.mapper.MasterDataReferenceMapper;
 import com.ruoyi.common.exception.ServiceException;
 import java.util.*;
 import java.util.function.Function;
@@ -24,10 +25,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ItemCategoryServiceImpl implements ItemCategoryService {
   private final ItemCategoryMapper mapper;
+  private final MasterDataReferenceMapper references;
 
   /** 注入分类数据访问接口。 */
-  public ItemCategoryServiceImpl(ItemCategoryMapper mapper) {
+  public ItemCategoryServiceImpl(ItemCategoryMapper mapper, MasterDataReferenceMapper references) {
     this.mapper = mapper;
+    this.references = references;
   }
 
   /** 查询分类，过滤时补回祖先并标识真正匹配的节点。 */
@@ -128,6 +131,10 @@ public class ItemCategoryServiceImpl implements ItemCategoryService {
                         && c.getStatus() == CategoryStatus.ENABLED)) {
       throw new ServiceException("存在启用的子分类，请先停用子分类");
     }
+    if (request.getStatus() == CategoryStatus.DISABLED
+        && references.categoryItems(category.getCategoryId(), true) > 0) {
+      throw new ServiceException("存在启用料品引用，请先调整或停用料品");
+    }
     checkCode(request.getCategoryCode(), category.getCategoryId());
     copyFields(request, category);
     category.setVersion(Math.addExact(category.getVersion(), 1));
@@ -156,6 +163,9 @@ public class ItemCategoryServiceImpl implements ItemCategoryService {
     checkVersion(category, version);
     if (indexed.values().stream().anyMatch(c -> c.getParentId().equals(id))) {
       throw new ServiceException("存在子分类，不能删除");
+    }
+    if (references.categoryItems(id, false) > 0) {
+      throw new ServiceException("存在料品引用，不能删除分类");
     }
     if (mapper.deleteById(category) != 1) {
       throw new ServiceException("分类已变更，请刷新后重试");
