@@ -98,6 +98,7 @@ class SupplierIntegrationTest {
       for (String statement : schema.split(";")) if (!statement.isBlank()) sql.execute(statement);
     }
     service = context.getBean(SupplierService.class);
+    com.ruoyi.business.masterdata.common.MasterDataTestSchema.create(schemaConnection);
     RequestContextHolder.setRequestAttributes(
         new ServletRequestAttributes(new MockHttpServletRequest()));
     login("creator", Set.of("*:*:*"));
@@ -480,7 +481,10 @@ class SupplierIntegrationTest {
   @Configuration
   @EnableTransactionManagement
   @EnableMethodSecurity
-  @MapperScan({"com.ruoyi.business.masterdata.supplier.mapper"})
+  @MapperScan({
+    "com.ruoyi.business.masterdata.supplier.mapper",
+    "com.ruoyi.business.masterdata.common.mapper"
+  })
   @Import({
     MyBatisConfig.class,
     BusinessAuditHandler.class,

@@ -99,6 +99,9 @@ public class UnitServiceImpl implements UnitService {
   public void update(SaveUnitRequest request) {
     Unit unit = lockExisting(request.getUnitId(), request.getVersion());
     if (request.getStatus() == EnableStatus.DISABLED
+        && references.unitOrders(unit.getUnitId(), true) > 0)
+      throw new ServiceException("存在未关闭采购订单，不能停用单位");
+    if (request.getStatus() == EnableStatus.DISABLED
         && references.unitItems(unit.getUnitId(), true) > 0) {
       throw new ServiceException("存在启用料品引用，请先调整或停用料品");
     }
@@ -124,6 +127,7 @@ public class UnitServiceImpl implements UnitService {
   @Transactional(rollbackFor = Exception.class)
   public void delete(Long id, Integer version) {
     Unit unit = lockExisting(id, version);
+    if (references.unitOrders(id, false) > 0) throw new ServiceException("存在采购订单引用，不能删除单位");
     if (references.unitItems(id, false) > 0) throw new ServiceException("存在料品引用，不能删除单位");
     if (mapper.deleteById(unit) != 1) throw new ServiceException("单位已变更，请刷新后重试");
   }

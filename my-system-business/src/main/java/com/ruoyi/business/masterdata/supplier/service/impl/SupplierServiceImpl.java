@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import com.ruoyi.business.masterdata.common.mapper.MasterDataReferenceMapper;
 import com.ruoyi.business.masterdata.supplier.domain.Supplier;
 import com.ruoyi.business.masterdata.supplier.dto.SaveSupplierRequest;
 import com.ruoyi.business.masterdata.supplier.dto.SupplierQuery;
@@ -25,10 +26,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SupplierServiceImpl implements SupplierService {
   private final SupplierMapper mapper;
+  private final MasterDataReferenceMapper references;
 
   /** 注入供应商数据访问。 */
-  public SupplierServiceImpl(SupplierMapper mapper) {
+  public SupplierServiceImpl(SupplierMapper mapper, MasterDataReferenceMapper references) {
     this.mapper = mapper;
+    this.references = references;
   }
 
   /** 在唯一一次列表查询前开启分页，转换 VO 前保留总数，最终清理线程状态。 */
@@ -108,6 +111,9 @@ public class SupplierServiceImpl implements SupplierService {
   @Transactional(rollbackFor = Exception.class)
   public void update(SaveSupplierRequest request) {
     Supplier supplier = lockExisting(request.getSupplierId(), request.getVersion());
+    if (request.getStatus() == EnableStatus.DISABLED
+        && references.supplierOrders(supplier.getSupplierId(), true) > 0)
+      throw new ServiceException("存在未关闭采购订单，不能停用供应商");
     checkUnique(request, supplier.getSupplierId());
     copyFields(request, supplier);
     if (supplier.getVersion() == Integer.MAX_VALUE) throw new ServiceException("供应商版本已达上限，请联系管理员");
@@ -130,6 +136,7 @@ public class SupplierServiceImpl implements SupplierService {
   @Transactional(rollbackFor = Exception.class)
   public void delete(Long id, Integer version) {
     Supplier supplier = lockExisting(id, version);
+    if (references.supplierOrders(id, false) > 0) throw new ServiceException("存在采购订单引用，不能删除供应商");
     if (mapper.deleteById(supplier) != 1) throw new ServiceException("供应商已变更，请刷新后重试");
   }
 

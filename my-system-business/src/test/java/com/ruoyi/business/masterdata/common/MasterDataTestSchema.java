@@ -13,7 +13,11 @@ public final class MasterDataTestSchema {
   public static void create(Connection connection) throws Exception {
     for (String file :
         new String[] {
-          "20261014_01_item_category.sql", "20261015_01_unit.sql", "20261016_01_item.sql"
+          "20261014_01_item_category.sql",
+          "20261015_01_unit.sql",
+          "20261016_01_item.sql",
+          "20261017_01_supplier.sql",
+          "20261017_02_purchase_order.sql"
         }) {
       Path path = Path.of("../sql/migrations", file);
       if (!Files.exists(path)) path = Path.of("sql/migrations", file);
