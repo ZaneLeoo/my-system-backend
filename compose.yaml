@@ -29,6 +29,7 @@ services:
       - ./sql/migrations/20261017_02_purchase_order.sql:/docker-entrypoint-initdb.d/08-purchase-order.sql:ro
       - ./sql/migrations/20261017_03_warehouse_location.sql:/docker-entrypoint-initdb.d/09-warehouse-location.sql:ro
       - ./sql/migrations/20261018_01_purchase_arrival.sql:/docker-entrypoint-initdb.d/10-purchase-arrival.sql:ro
+      - ./sql/migrations/20261018_02_purchase_receipt_inventory.sql:/docker-entrypoint-initdb.d/11-purchase-receipt-inventory.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysql -h 127.0.0.1 -u root -Nse 'SELECT 1' >/dev/null"]
       interval: 5s

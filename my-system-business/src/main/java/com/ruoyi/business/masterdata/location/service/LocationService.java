@@ -29,12 +29,18 @@ public class LocationService {
   private final LocationMapper mapper;
   private final WarehouseService warehouses;
   private final Validator validator;
+  private final com.ruoyi.business.masterdata.common.mapper.MasterDataReferenceMapper references;
 
   /** 注入货位访问、仓库事务协调和参数校验。 */
-  public LocationService(LocationMapper mapper, WarehouseService warehouses, Validator validator) {
+  public LocationService(
+      LocationMapper mapper,
+      WarehouseService warehouses,
+      Validator validator,
+      com.ruoyi.business.masterdata.common.mapper.MasterDataReferenceMapper references) {
     this.mapper = mapper;
     this.warehouses = warehouses;
     this.validator = validator;
+    this.references = references;
   }
 
   /** 固定所属仓库分页查询，不因货位停用或父仓库停用隐藏维护数据。 */
@@ -86,7 +92,9 @@ public class LocationService {
   }
 
   /** 新增货位要求所属仓库启用且开启货位管理。 */
-  @Transactional(rollbackFor = Exception.class)
+  @Transactional(
+      rollbackFor = Exception.class,
+      isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
   public LocationView create(SaveLocationRequest request) {
     validate(request);
     if (request.getLocationId() != null || request.getVersion() != null)
@@ -105,8 +113,10 @@ public class LocationService {
     return LocationView.from(location);
   }
 
-  /** 不允许更换所属仓库，仅重新启用时检查父仓库可用性。 */
-  @Transactional(rollbackFor = Exception.class)
+  /** 不允许更换仓库；READ_COMMITTED 保证定位仓库后的引用检查读取等待锁结束后的最新提交。 */
+  @Transactional(
+      rollbackFor = Exception.class,
+      isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
   public void update(SaveLocationRequest request) {
     validate(request);
     Location initial = require(request.getLocationId());
@@ -116,6 +126,9 @@ public class LocationService {
       throw new ServiceException("货位创建后不能更换所属仓库");
     if (location.getStatus() != EnableStatus.ENABLED && request.getStatus() == EnableStatus.ENABLED)
       requireSelectable(warehouse);
+    if (request.getStatus() == EnableStatus.DISABLED
+        && references.locationReferences(location.getLocationId(), true) > 0)
+      throw new ServiceException("货位存在未完成入库业务或库存，不能停用");
     checkCode(request, location.getLocationId());
     copy(request, location);
     if (location.getVersion() == Integer.MAX_VALUE) throw new ServiceException("货位版本已达上限");
@@ -132,12 +145,16 @@ public class LocationService {
     }
   }
 
-  /** 固定锁顺序与版本检查后使用实体逻辑删除，触发公共审计。 */
-  @Transactional(rollbackFor = Exception.class)
+  /** 先定位仓库再加锁，引用检查读取锁等待后的最新提交，实体逻辑删除触发审计。 */
+  @Transactional(
+      rollbackFor = Exception.class,
+      isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
   public void delete(Long id, Integer version) {
     Location initial = require(id);
     warehouses.lock(initial.getWarehouseId());
     Location location = lock(id, version);
+    if (references.locationReferences(id, false) > 0)
+      throw new ServiceException("货位存在入库或库存历史引用，不能删除");
     if (mapper.deleteById(location) != 1) throw stale();
   }
 

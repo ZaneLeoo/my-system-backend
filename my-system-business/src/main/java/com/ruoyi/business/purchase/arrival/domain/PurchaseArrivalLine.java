@@ -8,6 +8,12 @@ import java.math.BigDecimal;
 /** 采购到货明细，稳定行 ID 供后续入库引用 */
 @TableName("purchase_arrival_line")
 public class PurchaseArrivalLine extends BusinessEntity {
+  /** 待审核入库数量。 */
+  private BigDecimal pendingReceiptQuantity = BigDecimal.ZERO;
+
+  /** 已入库数量。 */
+  private BigDecimal receivedQuantity = BigDecimal.ZERO;
+
   /** 到货明细 ID。 */
   @TableId(type = IdType.AUTO)
   private Long lineId;
@@ -215,5 +221,25 @@ public class PurchaseArrivalLine extends BusinessEntity {
   /** 设置行备注。 */
   public void setRemark(String remark) {
     this.remark = remark;
+  }
+
+  /** 返回待审核入库数量。 */
+  public BigDecimal getPendingReceiptQuantity() {
+    return pendingReceiptQuantity;
+  }
+
+  /** 设置待审核入库数量。 */
+  public void setPendingReceiptQuantity(BigDecimal pendingReceiptQuantity) {
+    this.pendingReceiptQuantity = pendingReceiptQuantity;
+  }
+
+  /** 返回已入库数量。 */
+  public BigDecimal getReceivedQuantity() {
+    return receivedQuantity;
+  }
+
+  /** 设置已入库数量。 */
+  public void setReceivedQuantity(BigDecimal receivedQuantity) {
+    this.receivedQuantity = receivedQuantity;
   }
 }

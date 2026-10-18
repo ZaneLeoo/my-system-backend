@@ -105,6 +105,8 @@ public class UnitServiceImpl implements UnitService {
         && references.unitItems(unit.getUnitId(), true) > 0) {
       throw new ServiceException("存在启用料品引用，请先调整或停用料品");
     }
+    if (request.getStatus() == EnableStatus.DISABLED && references.unitStock(unit.getUnitId()) > 0)
+      throw new ServiceException("存在库存，不能停用库存单位");
     checkUnique(request, unit.getUnitId());
     copyFields(request, unit);
     if (unit.getVersion() == Integer.MAX_VALUE) throw new ServiceException("单位版本已达上限，请联系管理员");

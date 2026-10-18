@@ -97,6 +97,8 @@ public class ItemServiceImpl implements ItemService {
             || !Boolean.TRUE.equals(request.getPurchaseEnabled()))
         && references.itemPurchaseDocuments(item.getItemId(), true) > 0)
       throw new ServiceException("存在未完成采购单据，不能停用料品或关闭采购开关");
+    if (request.getStatus() == EnableStatus.DISABLED && references.itemStock(item.getItemId()) > 0)
+      throw new ServiceException("存在库存，不能停用料品");
     checkCode(request.getItemCode(), item.getItemId());
     if (item.getVersion() == Integer.MAX_VALUE) throw new ServiceException("料品版本已达上限");
     copy(request, item);

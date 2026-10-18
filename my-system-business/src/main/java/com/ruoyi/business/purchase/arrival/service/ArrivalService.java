@@ -53,6 +53,8 @@ public class ArrivalService {
   private final ItemMapper items;
   private final ItemCategoryMapper categories;
   private final Validator validator;
+  private final com.ruoyi.business.masterdata.common.mapper.MasterDataReferenceMapper
+      masterReferences;
 
   /** 注入持久化与公共校验组件，不反向依赖档案维护服务。 */
   public ArrivalService(
@@ -66,7 +68,8 @@ public class ArrivalService {
       UnitMapper units,
       ItemMapper items,
       ItemCategoryMapper categories,
-      Validator validator) {
+      Validator validator,
+      com.ruoyi.business.masterdata.common.mapper.MasterDataReferenceMapper masterReferences) {
     this.arrivals = arrivals;
     this.lines = lines;
     this.orders = orders;
@@ -78,6 +81,7 @@ public class ArrivalService {
     this.items = items;
     this.categories = categories;
     this.validator = validator;
+    this.masterReferences = masterReferences;
   }
 
   /** 分页只覆盖主查询，转换前保留总数，所有异常路径清理线程上下文。 */
@@ -118,7 +122,18 @@ public class ArrivalService {
       PageHelper.startPage(query.getPageNum(), query.getPageSize()).setReasonable(false);
       List<PurchaseArrival> found = arrivals.selectList(condition);
       long total = new PageInfo<>(found).getTotal();
-      return new PageResult<>(found.stream().map(ArrivalView::from).toList(), total);
+      var progress = receiptProgress(found.stream().map(PurchaseArrival::getArrivalId).toList());
+      return new PageResult<>(
+          found.stream()
+              .map(
+                  h -> {
+                    var view = ArrivalView.from(h);
+                    view.setReceiptProgress(
+                        progress.getOrDefault(h.getArrivalId(), ReceiptProgress.NOT_RECEIVED));
+                    return view;
+                  })
+              .toList(),
+          total);
     } finally {
       PageHelper.clearPage();
     }
@@ -129,6 +144,8 @@ public class ArrivalService {
   public ArrivalView detail(Long id) {
     ArrivalView view = ArrivalView.from(require(id));
     List<PurchaseArrivalLine> saved = existingLines(id);
+    view.setReceiptProgress(
+        receiptProgress(List.of(id)).getOrDefault(id, ReceiptProgress.NOT_RECEIVED));
     Map<Long, PurchaseOrderLine> source =
         saved.isEmpty()
             ? Map.of()
@@ -280,6 +297,8 @@ public class ArrivalService {
           source,
           action == ArrivalAction.SUBMIT);
     }
+    if (action == ArrivalAction.VOID && masterReferences.arrivalReceipts(id) > 0)
+      throw new ServiceException("存在未作废的采购入库单，不能作废到货单");
     postQuantities(saved, source, action);
     String actor = SecurityUtils.getUsername();
     LocalDateTime time = LocalDateTime.now(OrderRules.TIME_ZONE);
@@ -550,6 +569,29 @@ public class ArrivalService {
     return line.getQuantity()
         .subtract(line.getPendingArrivalQuantity())
         .subtract(line.getArrivedQuantity());
+  }
+
+  /** 按每个来源行判断进度，不合计不同单位的数量。 */
+  private Map<Long, ReceiptProgress> receiptProgress(List<Long> ids) {
+    var result = new HashMap<Long, ReceiptProgress>();
+    if (ids.isEmpty()) return result;
+    var grouped =
+        lines
+            .selectList(
+                Wrappers.<PurchaseArrivalLine>lambdaQuery()
+                    .in(PurchaseArrivalLine::getArrivalId, ids))
+            .stream()
+            .collect(Collectors.groupingBy(PurchaseArrivalLine::getArrivalId));
+    grouped.forEach(
+        (id, rows) ->
+            result.put(
+                id,
+                rows.stream().allMatch(r -> r.getReceivedQuantity().compareTo(r.getQuantity()) == 0)
+                    ? ReceiptProgress.FULLY_RECEIVED
+                    : rows.stream().anyMatch(r -> r.getReceivedQuantity().signum() > 0)
+                        ? ReceiptProgress.PARTIALLY_RECEIVED
+                        : ReceiptProgress.NOT_RECEIVED));
+    return result;
   }
 
   /** 与订单及基础档案写操作共用跨实例事务锁。 */

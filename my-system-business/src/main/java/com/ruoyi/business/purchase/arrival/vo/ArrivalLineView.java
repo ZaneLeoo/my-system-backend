@@ -8,6 +8,18 @@ import java.math.BigDecimal;
 
 /** 到货行快照及来源订单的当前执行数量 */
 public class ArrivalLineView {
+  /** 待审核入库数量。 */
+  @JsonFormat(shape = JsonFormat.Shape.STRING)
+  private BigDecimal pendingReceiptQuantity = BigDecimal.ZERO;
+
+  /** 已入库数量。 */
+  @JsonFormat(shape = JsonFormat.Shape.STRING)
+  private BigDecimal receivedQuantity = BigDecimal.ZERO;
+
+  /** 可新增入库数量。 */
+  @JsonFormat(shape = JsonFormat.Shape.STRING)
+  private BigDecimal availableReceiptQuantity;
+
   /** 到货明细 ID。 */
   private Long lineId;
 
@@ -276,6 +288,13 @@ public class ArrivalLineView {
   /** 显式映射业务快照，不返回内部删除标记。 */
   public static ArrivalLineView from(PurchaseArrivalLine entity) {
     ArrivalLineView result = new ArrivalLineView();
+    result.setPendingReceiptQuantity(entity.getPendingReceiptQuantity());
+    result.setReceivedQuantity(entity.getReceivedQuantity());
+    result.setAvailableReceiptQuantity(
+        entity
+            .getQuantity()
+            .subtract(entity.getPendingReceiptQuantity())
+            .subtract(entity.getReceivedQuantity()));
     result.setLineId(entity.getLineId());
     result.setArrivalId(entity.getArrivalId());
     result.setLineNo(entity.getLineNo());
@@ -293,5 +312,35 @@ public class ArrivalLineView {
     result.setQuantityDecimalPlaces(entity.getQuantityDecimalPlaces());
     result.setRemark(entity.getRemark());
     return result;
+  }
+
+  /** 返回待审核入库数量。 */
+  public BigDecimal getPendingReceiptQuantity() {
+    return pendingReceiptQuantity;
+  }
+
+  /** 设置待审核入库数量。 */
+  public void setPendingReceiptQuantity(BigDecimal pendingReceiptQuantity) {
+    this.pendingReceiptQuantity = pendingReceiptQuantity;
+  }
+
+  /** 返回已入库数量。 */
+  public BigDecimal getReceivedQuantity() {
+    return receivedQuantity;
+  }
+
+  /** 设置已入库数量。 */
+  public void setReceivedQuantity(BigDecimal receivedQuantity) {
+    this.receivedQuantity = receivedQuantity;
+  }
+
+  /** 返回可新增入库数量。 */
+  public BigDecimal getAvailableReceiptQuantity() {
+    return availableReceiptQuantity;
+  }
+
+  /** 设置可新增入库数量。 */
+  public void setAvailableReceiptQuantity(BigDecimal availableReceiptQuantity) {
+    this.availableReceiptQuantity = availableReceiptQuantity;
   }
 }

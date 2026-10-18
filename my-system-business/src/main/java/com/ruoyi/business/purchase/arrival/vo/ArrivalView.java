@@ -9,6 +9,9 @@ import java.util.List;
 
 /** 到货单快照响应 */
 public class ArrivalView {
+  /** 入库执行进度。 */
+  private ReceiptProgress receiptProgress = ReceiptProgress.NOT_RECEIVED;
+
   /** 到货单 ID。 */
   private Long arrivalId;
 
@@ -446,5 +449,15 @@ public class ArrivalView {
     result.setUpdateBy(entity.getUpdateBy());
     result.setUpdateTime(entity.getUpdateTime());
     return result;
+  }
+
+  /** 返回入库执行进度。 */
+  public ReceiptProgress getReceiptProgress() {
+    return receiptProgress;
+  }
+
+  /** 设置入库执行进度。 */
+  public void setReceiptProgress(ReceiptProgress receiptProgress) {
+    this.receiptProgress = receiptProgress;
   }
 }

@@ -110,6 +110,12 @@ public class WarehouseService {
     Warehouse warehouse = lock(request.getWarehouseId());
     version(warehouse.getVersion(), request.getVersion());
     if (request.getStatus() == EnableStatus.DISABLED
+        && references.warehouseStock(warehouse.getWarehouseId()) > 0)
+      throw new ServiceException("存在库存，不能停用仓库");
+    if (!java.util.Objects.equals(request.getLocationEnabled(), warehouse.getLocationEnabled())
+        && references.warehouseModeReferences(warehouse.getWarehouseId()) > 0)
+      throw new ServiceException("存在入库单或库存历史，不能切换货位管理方式");
+    if (request.getStatus() == EnableStatus.DISABLED
         && references.warehouseArrivals(warehouse.getWarehouseId(), true) > 0)
       throw new ServiceException("仓库存在未作废的采购到货单，不能停用");
     if (!Boolean.TRUE.equals(request.getLocationEnabled())
