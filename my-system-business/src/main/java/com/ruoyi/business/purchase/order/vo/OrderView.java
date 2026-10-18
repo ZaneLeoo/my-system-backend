@@ -1,6 +1,7 @@
 package com.ruoyi.business.purchase.order.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.ruoyi.business.purchase.arrival.domain.ReceiptProgress;
 import com.ruoyi.business.purchase.order.domain.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -9,6 +10,9 @@ import java.util.List;
 
 /** 订单对外响应，金额用十进制字符串传输。 */
 public class OrderView {
+  /** 以订单各行订购数量判断的入库进度。 */
+  private ReceiptProgress receiptProgress = ReceiptProgress.NOT_RECEIVED;
+
   /** 与审批状态独立的行级到货进度。 */
   private ArrivalProgress arrivalProgress = ArrivalProgress.NOT_ARRIVED;
 
@@ -574,5 +578,15 @@ public class OrderView {
     result.setUpdateBy(entity.getUpdateBy());
     result.setUpdateTime(entity.getUpdateTime());
     return result;
+  }
+
+  /** 返回以订单各行订购数量判断的入库进度。 */
+  public ReceiptProgress getReceiptProgress() {
+    return receiptProgress;
+  }
+
+  /** 设置以订单各行订购数量判断的入库进度。 */
+  public void setReceiptProgress(ReceiptProgress receiptProgress) {
+    this.receiptProgress = receiptProgress;
   }
 }

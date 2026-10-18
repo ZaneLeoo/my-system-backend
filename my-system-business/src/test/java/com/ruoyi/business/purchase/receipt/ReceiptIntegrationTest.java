@@ -657,6 +657,167 @@ class ReceiptIntegrationTest {
     assertTrue(refs.itemStock(1L) > 0);
   }
 
+  /** 订单按审核入库汇总，提交只显示占用，已到货未入库包含该占用。 */
+  @Test
+  void orderReceiptLifecycleAndShortDelivery() {
+    var order = approved("10");
+    var a = arrivalService.create(arrival(order, "6"));
+    a = action(action(a, ArrivalAction.SUBMIT, ""), ArrivalAction.APPROVE, "");
+    var d = receipts.create(receipt(a, "4", null));
+    orderReceipt(order.getOrderId(), "0", "0", "6", ReceiptProgress.NOT_RECEIVED);
+    var submitted = receiptAction(d, ReceiptAction.SUBMIT, "");
+    orderReceipt(order.getOrderId(), "4", "0", "6", ReceiptProgress.NOT_RECEIVED);
+    var withdrawn = receiptAction(submitted, ReceiptAction.WITHDRAW, "");
+    orderReceipt(order.getOrderId(), "0", "0", "6", ReceiptProgress.NOT_RECEIVED);
+    var confirmed =
+        receiptAction(
+            receiptAction(withdrawn, ReceiptAction.SUBMIT, ""), ReceiptAction.APPROVE, "");
+    orderReceipt(order.getOrderId(), "0", "4", "2", ReceiptProgress.PARTIALLY_RECEIVED);
+    var rest =
+        receiptAction(
+            receiptAction(receipts.create(receipt(a, "2", null)), ReceiptAction.SUBMIT, ""),
+            ReceiptAction.APPROVE,
+            "");
+    orderReceipt(order.getOrderId(), "0", "6", "0", ReceiptProgress.PARTIALLY_RECEIVED);
+    var next = arrivalService.create(arrival(service.detail(order.getOrderId()), "4"));
+    next = action(action(next, ArrivalAction.SUBMIT, ""), ArrivalAction.APPROVE, "");
+    var last =
+        receiptAction(
+            receiptAction(receipts.create(receipt(next, "4", null)), ReceiptAction.SUBMIT, ""),
+            ReceiptAction.APPROVE,
+            "");
+    orderReceipt(order.getOrderId(), "0", "10", "0", ReceiptProgress.FULLY_RECEIVED);
+    receiptAction(last, ReceiptAction.VOID, "冲销");
+    orderReceipt(order.getOrderId(), "0", "6", "4", ReceiptProgress.PARTIALLY_RECEIVED);
+    receiptAction(rest, ReceiptAction.VOID, "冲销");
+    receiptAction(confirmed, ReceiptAction.VOID, "冲销");
+    orderReceipt(order.getOrderId(), "0", "0", "10", ReceiptProgress.NOT_RECEIVED);
+  }
+
+  /** 不同到货单及拆分货位按同一稳定订单行累加，列表分页总数不被关联放大。 */
+  @Test
+  void orderReceiptCombinesSourcesAndLocationsWithoutMultiplication() {
+    enableLocations();
+    var o = approved("10");
+    var a = arrivalService.create(arrival(o, "6"));
+    a = action(action(a, ArrivalAction.SUBMIT, ""), ArrivalAction.APPROVE, "");
+    var input = receipt(a, "2", 1L);
+    input.getLines().add(receiptLine(a, "4", 2L));
+    var r =
+        receiptAction(
+            receiptAction(receipts.create(input), ReceiptAction.SUBMIT, ""),
+            ReceiptAction.APPROVE,
+            "");
+    var b = arrivalService.create(arrival(service.detail(o.getOrderId()), "4"));
+    b = action(action(b, ArrivalAction.SUBMIT, ""), ArrivalAction.APPROVE, "");
+    receiptAction(receipts.create(receipt(b, "3", 1L)), ReceiptAction.SUBMIT, "");
+    orderReceipt(o.getOrderId(), "3", "6", "4", ReceiptProgress.PARTIALLY_RECEIVED);
+    var unrelated = approved("5");
+    var q = new OrderQuery();
+    q.setPageSize(1);
+    var page = service.list(q);
+    assertEquals(2, page.getTotal());
+    assertEquals(1, page.getRows().size());
+    assertEquals(
+        service.detail(page.getRows().get(0).getOrderId()).getReceiptProgress(),
+        page.getRows().get(0).getReceiptProgress());
+    q.setPageNum(2);
+    assertEquals(1, service.list(q).getRows().size());
+    assertNull(PageHelper.getLocalPage());
+    receiptAction(r, ReceiptAction.VOID, "撤销拆分入库");
+    orderReceipt(o.getOrderId(), "3", "0", "10", ReceiptProgress.NOT_RECEIVED);
+  }
+
+  /** 整单进度逐行判断，不混合单位；非正常主明细不参与执行量。 */
+  @Test
+  void orderReceiptProgressUsesEachOrderedLineAndFiltersDeleted() {
+    jdbc.execute(
+        "INSERT INTO md_item(item_id,item_code,item_name,category_id,base_unit_id,create_by,create_time) VALUES(2,'I2','箱装料品',1,2,'fixture',NOW())");
+    var request = request();
+    request.getLines().get(0).setQuantity(BigDecimal.ONE);
+    var second = line();
+    second.setItemId(2L);
+    second.setUnitId(2L);
+    second.setQuantity(new BigDecimal("1000"));
+    request.getLines().add(second);
+    var o = service.create(request);
+    o = act(act(o, OrderAction.SUBMIT, ""), OrderAction.APPROVE, "");
+    var ai = arrival(o, "1");
+    var al = new ArrivalLineInput();
+    al.setOrderLineId(o.getLines().get(1).getLineId());
+    al.setQuantity(new BigDecimal("1000"));
+    ai.getLines().add(al);
+    var a = arrivalService.create(ai);
+    a = action(action(a, ArrivalAction.SUBMIT, ""), ArrivalAction.APPROVE, "");
+    var r =
+        receiptAction(
+            receiptAction(receipts.create(receipt(a, "1", null)), ReceiptAction.SUBMIT, ""),
+            ReceiptAction.APPROVE,
+            "");
+    assertEquals(
+        ReceiptProgress.PARTIALLY_RECEIVED, service.detail(o.getOrderId()).getReceiptProgress());
+    assertEquals(
+        0, service.detail(o.getOrderId()).getLines().get(1).getReceivedQuantity().signum());
+    var query = new OrderQuery();
+    assertEquals(
+        ReceiptProgress.PARTIALLY_RECEIVED,
+        service.list(query).getRows().get(0).getReceiptProgress());
+    jdbc.update(
+        "UPDATE purchase_receipt_line SET del_flag='2' WHERE receipt_id=?", r.getReceiptId());
+    assertEquals(ReceiptProgress.NOT_RECEIVED, service.detail(o.getOrderId()).getReceiptProgress());
+    assertEquals(
+        ReceiptProgress.NOT_RECEIVED, service.list(query).getRows().get(0).getReceiptProgress());
+    jdbc.update(
+        "UPDATE purchase_receipt_line SET del_flag='0' WHERE receipt_id=?", r.getReceiptId());
+    jdbc.update("UPDATE purchase_receipt SET del_flag='2' WHERE receipt_id=?", r.getReceiptId());
+    assertEquals(ReceiptProgress.NOT_RECEIVED, service.detail(o.getOrderId()).getReceiptProgress());
+  }
+
+  /** 关联入库按稳定订单来源过滤，合并单只返回一次并沿用列表权限。 */
+  @Test
+  void relatedReceiptsFilterBySourceOrder() throws Exception {
+    var a = confirmed("10");
+    var b = confirmed("5");
+    var input = receipt(a, "2", null);
+    input.getLines().add(receiptLine(b, "3", null));
+    var r = receipts.create(input);
+    var c = approved("8");
+    var q = new ReceiptQuery();
+    q.setOrderId(a.getLines().get(0).getOrderId());
+    assertEquals(1, receipts.list(q).getTotal());
+    q.setOrderId(b.getLines().get(0).getOrderId());
+    assertEquals(r.getReceiptId(), receipts.list(q).getRows().get(0).getReceiptId());
+    q.setOrderId(c.getOrderId());
+    assertEquals(0, receipts.list(q).getTotal());
+    login(Set.of("purchase:receipt:list"));
+    mvc.perform(
+            get("/purchase/receipt/list")
+                .param("orderId", a.getLines().get(0).getOrderId().toString()))
+        .andExpect(jsonPath("$.data.total").value(1));
+    mvc.perform(get("/purchase/receipt/list").param("orderId", "-1"))
+        .andExpect(jsonPath("$.code").value(500));
+    login(Set.of("purchase:order:query"));
+    mvc.perform(get("/purchase/order/" + a.getLines().get(0).getOrderId()))
+        .andExpect(jsonPath("$.data.receiptProgress").value("NOT_RECEIVED"))
+        .andExpect(jsonPath("$.data.lines[0].pendingReceiptQuantity").value("0"))
+        .andExpect(jsonPath("$.data.lines[0].receivedQuantity").value("0"))
+        .andExpect(jsonPath("$.data.lines[0].arrivedNotReceivedQuantity").value("10.000000"));
+  }
+
+  /** 详情和列表均使用同一审核口径，数量比较不依赖 BigDecimal 小数位。 */
+  private void orderReceipt(
+      Long id, String pending, String received, String remaining, ReceiptProgress progress) {
+    var view = service.detail(id);
+    var row = view.getLines().get(0);
+    assertEquals(0, row.getPendingReceiptQuantity().compareTo(new BigDecimal(pending)));
+    assertEquals(0, row.getReceivedQuantity().compareTo(new BigDecimal(received)));
+    assertEquals(0, row.getArrivedNotReceivedQuantity().compareTo(new BigDecimal(remaining)));
+    assertEquals(progress, view.getReceiptProgress());
+    var q = new OrderQuery();
+    q.setOrderNo(view.getOrderNo());
+    assertEquals(progress, service.list(q).getRows().get(0).getReceiptProgress());
+  }
+
   /** 创建已审核到货，作为入库唯一正式来源。 */
   private ArrivalView confirmed(String quantity) {
     var a = arrivalService.create(arrival(approved(quantity), quantity));

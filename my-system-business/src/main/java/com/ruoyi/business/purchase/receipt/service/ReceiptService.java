@@ -104,6 +104,10 @@ public class ReceiptService {
       w.apply(
           "EXISTS (SELECT 1 FROM purchase_receipt_line l WHERE l.receipt_id=purchase_receipt.receipt_id AND l.del_flag='0' AND l.arrival_id={0})",
           q.getArrivalId());
+    if (q.getOrderId() != null)
+      w.apply(
+          "EXISTS (SELECT 1 FROM purchase_receipt_line l WHERE l.receipt_id=purchase_receipt.receipt_id AND l.del_flag='0' AND l.order_id={0})",
+          q.getOrderId());
     boolean asc = "asc".equals(q.getSortDirection());
     switch (q.getSortField() == null ? "receiptDate" : q.getSortField()) {
       case "receiptNo" -> w.orderBy(true, asc, PurchaseReceipt::getReceiptNo);

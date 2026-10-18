@@ -8,6 +8,18 @@ import java.time.LocalDateTime;
 
 /** 订单对外响应，金额用十进制字符串传输。 */
 public class OrderLineView {
+  /** 待审核入库数量。 */
+  @JsonFormat(shape = JsonFormat.Shape.STRING)
+  private BigDecimal pendingReceiptQuantity = BigDecimal.ZERO;
+
+  /** 累计已入库数量。 */
+  @JsonFormat(shape = JsonFormat.Shape.STRING)
+  private BigDecimal receivedQuantity = BigDecimal.ZERO;
+
+  /** 已到货未入库数量（含待审核入库）。 */
+  @JsonFormat(shape = JsonFormat.Shape.STRING)
+  private BigDecimal arrivedNotReceivedQuantity = BigDecimal.ZERO;
+
   /** 明细行 ID。 */
   private Long lineId;
 
@@ -376,5 +388,35 @@ public class OrderLineView {
             .subtract(entity.getPendingArrivalQuantity())
             .subtract(entity.getArrivedQuantity()));
     return result;
+  }
+
+  /** 返回待审核入库数量。 */
+  public BigDecimal getPendingReceiptQuantity() {
+    return pendingReceiptQuantity;
+  }
+
+  /** 设置待审核入库数量。 */
+  public void setPendingReceiptQuantity(BigDecimal pendingReceiptQuantity) {
+    this.pendingReceiptQuantity = pendingReceiptQuantity;
+  }
+
+  /** 返回累计已入库数量。 */
+  public BigDecimal getReceivedQuantity() {
+    return receivedQuantity;
+  }
+
+  /** 设置累计已入库数量。 */
+  public void setReceivedQuantity(BigDecimal receivedQuantity) {
+    this.receivedQuantity = receivedQuantity;
+  }
+
+  /** 返回已到货未入库数量（含待审核入库）。 */
+  public BigDecimal getArrivedNotReceivedQuantity() {
+    return arrivedNotReceivedQuantity;
+  }
+
+  /** 设置已到货未入库数量（含待审核入库）。 */
+  public void setArrivedNotReceivedQuantity(BigDecimal arrivedNotReceivedQuantity) {
+    this.arrivedNotReceivedQuantity = arrivedNotReceivedQuantity;
   }
 }

@@ -21,12 +21,23 @@ public interface OrderMapper extends BaseMapper<PurchaseOrder> {
       "SELECT COUNT(*) FROM purchase_arrival_line l JOIN purchase_arrival a ON a.arrival_id=l.arrival_id WHERE l.order_id=#{id} AND l.del_flag='0' AND a.del_flag='0' AND a.status IN ('DRAFT','SUBMITTED')")
   long unfinishedArrivals(@Param("id") Long id);
 
-  /** 一次批量读取当前页各单的行级到货进度，不加总不同计量单位。 */
+  /** 入库行按稳定订单行聚合，避免经由到货和货位拆分产生重复累计。 */
+  String RECEIPT_AGGREGATE =
+      "SELECT rl.order_line_id,SUM(CASE WHEN r.status='SUBMITTED' THEN rl.quantity ELSE 0 END) AS pending_receipt_quantity,SUM(CASE WHEN r.status='APPROVED' THEN rl.quantity ELSE 0 END) AS received_quantity FROM purchase_receipt_line rl JOIN purchase_receipt r ON r.receipt_id=rl.receipt_id WHERE rl.del_flag='0' AND r.del_flag='0' AND r.status IN ('SUBMITTED','APPROVED') AND rl.order_id IN <foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach> GROUP BY rl.order_line_id";
+
+  /** 一次批量判断当前页各单的到货和入库进度，各行比较自身订购量，不合计不同单位。 */
   @Select({
     "<script>",
-    "SELECT order_id,CASE WHEN MAX(arrived_quantity)=0 THEN 'NOT_ARRIVED' WHEN MIN(CASE WHEN arrived_quantity=quantity THEN 1 ELSE 0 END)=1 THEN 'FULLY_ARRIVED' ELSE 'PARTIALLY_ARRIVED' END AS arrival_progress FROM purchase_order_line WHERE del_flag='0' AND order_id IN <foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach> GROUP BY order_id",
+    "SELECT ol.order_id,CASE WHEN MAX(ol.arrived_quantity)=0 THEN 'NOT_ARRIVED' WHEN MIN(CASE WHEN ol.arrived_quantity=ol.quantity THEN 1 ELSE 0 END)=1 THEN 'FULLY_ARRIVED' ELSE 'PARTIALLY_ARRIVED' END AS arrival_progress,CASE WHEN MAX(COALESCE(q.received_quantity,0))=0 THEN 'NOT_RECEIVED' WHEN MIN(CASE WHEN COALESCE(q.received_quantity,0)=ol.quantity THEN 1 ELSE 0 END)=1 THEN 'FULLY_RECEIVED' ELSE 'PARTIALLY_RECEIVED' END AS receipt_progress FROM purchase_order_line ol LEFT JOIN (",
+    RECEIPT_AGGREGATE,
+    ") q ON q.order_line_id=ol.line_id WHERE ol.del_flag='0' AND ol.order_id IN <foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach> GROUP BY ol.order_id",
     "</script>"
   })
-  java.util.List<com.ruoyi.business.purchase.order.vo.OrderArrivalProgress> arrivalProgress(
+  java.util.List<com.ruoyi.business.purchase.order.vo.OrderExecutionProgress> executionProgress(
+      @Param("ids") java.util.List<Long> ids);
+
+  /** 整单详情批量汇总来源行，草稿、作废及已删除单据／明细均不参与。 */
+  @Select({"<script>", RECEIPT_AGGREGATE, "</script>"})
+  java.util.List<com.ruoyi.business.purchase.order.vo.OrderLineReceiptQuantities> receiptQuantities(
       @Param("ids") java.util.List<Long> ids);
 }

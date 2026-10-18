@@ -14,6 +14,7 @@ import com.ruoyi.business.masterdata.supplier.domain.Supplier;
 import com.ruoyi.business.masterdata.supplier.mapper.SupplierMapper;
 import com.ruoyi.business.masterdata.unit.domain.Unit;
 import com.ruoyi.business.masterdata.unit.mapper.UnitMapper;
+import com.ruoyi.business.purchase.arrival.domain.ReceiptProgress;
 import com.ruoyi.business.purchase.order.domain.*;
 import com.ruoyi.business.purchase.order.dto.*;
 import com.ruoyi.business.purchase.order.mapper.*;
@@ -66,6 +67,7 @@ public class OrderService {
   }
 
   /** 按白名单查询，分页仅覆盖一次主表读取，转换前保留总数。 */
+  @Transactional(readOnly = true)
   public PageResult<OrderView> list(OrderQuery query) {
     validate(query);
     if (query.getBeginDate() != null
@@ -97,23 +99,24 @@ public class OrderService {
       List<PurchaseOrder> found = orders.selectList(wrapper);
       long total = new PageInfo<>(found).getTotal();
       PageHelper.clearPage();
-      Map<Long, ArrivalProgress> progress =
+      Map<Long, OrderExecutionProgress> progress =
           found.isEmpty()
               ? Map.of()
               : orders
-                  .arrivalProgress(found.stream().map(PurchaseOrder::getOrderId).toList())
+                  .executionProgress(found.stream().map(PurchaseOrder::getOrderId).toList())
                   .stream()
                   .collect(
-                      Collectors.toMap(
-                          OrderArrivalProgress::getOrderId,
-                          OrderArrivalProgress::getArrivalProgress));
+                      Collectors.toMap(OrderExecutionProgress::getOrderId, Function.identity()));
       return new PageResult<>(
           found.stream()
               .map(
                   row -> {
                     OrderView view = OrderView.from(row);
-                    view.setArrivalProgress(
-                        progress.getOrDefault(row.getOrderId(), ArrivalProgress.NOT_ARRIVED));
+                    var execution = progress.get(row.getOrderId());
+                    if (execution != null) {
+                      view.setArrivalProgress(execution.getArrivalProgress());
+                      view.setReceiptProgress(execution.getReceiptProgress());
+                    }
                     return view;
                   })
               .toList(),
@@ -128,7 +131,35 @@ public class OrderService {
   public OrderView detail(Long id) {
     PurchaseOrder order = require(id);
     OrderView view = OrderView.from(order);
-    view.setLines(existingLines(id).stream().map(OrderLineView::from).toList());
+    var receipts =
+        orders.receiptQuantities(List.of(id)).stream()
+            .collect(
+                Collectors.toMap(OrderLineReceiptQuantities::getOrderLineId, Function.identity()));
+    view.setLines(
+        existingLines(id).stream()
+            .map(
+                row -> {
+                  var line = OrderLineView.from(row);
+                  var receipt = receipts.get(row.getLineId());
+                  if (receipt != null) {
+                    line.setPendingReceiptQuantity(receipt.getPendingReceiptQuantity());
+                    line.setReceivedQuantity(receipt.getReceivedQuantity());
+                  }
+                  line.setArrivedNotReceivedQuantity(
+                      row.getArrivedQuantity().subtract(line.getReceivedQuantity()));
+                  return line;
+                })
+            .toList());
+    boolean anyReceived =
+        view.getLines().stream().anyMatch(line -> line.getReceivedQuantity().signum() > 0);
+    boolean allReceived =
+        !view.getLines().isEmpty()
+            && view.getLines().stream()
+                .allMatch(line -> line.getReceivedQuantity().compareTo(line.getQuantity()) == 0);
+    view.setReceiptProgress(
+        allReceived
+            ? ReceiptProgress.FULLY_RECEIVED
+            : anyReceived ? ReceiptProgress.PARTIALLY_RECEIVED : ReceiptProgress.NOT_RECEIVED);
     boolean any = view.getLines().stream().anyMatch(line -> line.getArrivedQuantity().signum() > 0);
     boolean all =
         !view.getLines().isEmpty()

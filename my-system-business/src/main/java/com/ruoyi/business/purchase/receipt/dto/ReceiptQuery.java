@@ -8,6 +8,9 @@ import java.time.LocalDate;
 
 /** 入库单接口分页、筛选及排序白名单 */
 public class ReceiptQuery extends PageQuery {
+  /** 来源采购订单筛选。 */
+  @Positive private Long orderId;
+
   /** 入库单号包含条件。 */
   @Size(max = 64)
   private String receiptNo;
@@ -18,7 +21,7 @@ public class ReceiptQuery extends PageQuery {
   /** 仓库条件。 */
   @Positive private Long warehouseId;
 
-  /** 来源订单条件。 */
+  /** 来源到货单条件。 */
   @Positive private Long arrivalId;
 
   /** 状态条件。 */
@@ -70,12 +73,12 @@ public class ReceiptQuery extends PageQuery {
     this.warehouseId = warehouseId;
   }
 
-  /** 返回来源订单条件。 */
+  /** 返回来源到货单条件。 */
   public Long getArrivalId() {
     return arrivalId;
   }
 
-  /** 设置来源订单条件。 */
+  /** 设置来源到货单条件。 */
   public void setArrivalId(Long arrivalId) {
     this.arrivalId = arrivalId;
   }
@@ -128,5 +131,15 @@ public class ReceiptQuery extends PageQuery {
   /** 设置排序方向。 */
   public void setSortDirection(String sortDirection) {
     this.sortDirection = sortDirection;
+  }
+
+  /** 返回来源采购订单筛选。 */
+  public Long getOrderId() {
+    return orderId;
+  }
+
+  /** 设置来源采购订单筛选。 */
+  public void setOrderId(Long orderId) {
+    this.orderId = orderId;
   }
 }
