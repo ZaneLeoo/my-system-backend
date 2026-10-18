@@ -22,7 +22,7 @@ public class SaveArrivalRequest {
   @NotNull @Positive private Long supplierId;
 
   /** 预计入库仓库 ID。 */
-  @NotNull @Positive private Long warehouseId;
+  @Positive private Long warehouseId;
 
   /** 供应商送货单号。 */
   @Size(max = 100)

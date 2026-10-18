@@ -39,6 +39,7 @@ public final class MasterDataTestSchema {
       }
     }
     try (var statement = connection.createStatement()) {
+      statement.execute("ALTER TABLE purchase_arrival ALTER COLUMN warehouse_id DROP NOT NULL");
       statement.execute(
           "ALTER TABLE purchase_receipt_line ADD COLUMN warehouse_id BIGINT NOT NULL");
       statement.execute(

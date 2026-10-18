@@ -486,13 +486,14 @@ public class ArrivalService {
     return supplier;
   }
 
-  /** 与仓库维护共用仓库行锁，读取等待结束后的最新状态。 */
+  /** 预计仓库可不指定；指定时与仓库维护共用行锁，校验当前有效状态。 */
   private Warehouse validateWarehouse(Long id) {
+    if (id == null) return null;
     Warehouse warehouse =
         warehouses.selectOne(
             Wrappers.<Warehouse>lambdaQuery().eq(Warehouse::getWarehouseId, id).last("FOR UPDATE"));
     if (warehouse == null || warehouse.getStatus() != EnableStatus.ENABLED)
-      throw new ServiceException("收货仓库无效或已停用");
+      throw new ServiceException("预计入库仓库无效或已停用");
     return warehouse;
   }
 
@@ -504,9 +505,9 @@ public class ArrivalService {
     target.setSupplierId(supplier.getSupplierId());
     target.setSupplierCode(supplier.getSupplierCode());
     target.setSupplierName(supplier.getSupplierName());
-    target.setWarehouseId(warehouse.getWarehouseId());
-    target.setWarehouseCode(warehouse.getWarehouseCode());
-    target.setWarehouseName(warehouse.getWarehouseName());
+    target.setWarehouseId(warehouse == null ? null : warehouse.getWarehouseId());
+    target.setWarehouseCode(warehouse == null ? "" : warehouse.getWarehouseCode());
+    target.setWarehouseName(warehouse == null ? "" : warehouse.getWarehouseName());
     target.setSupplierDeliveryNo(request.getSupplierDeliveryNo());
     target.setRemark(request.getRemark());
     target.setLineCount(request.getLines().size());

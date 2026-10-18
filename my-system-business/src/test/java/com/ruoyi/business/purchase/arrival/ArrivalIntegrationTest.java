@@ -191,6 +191,58 @@ class ArrivalIntegrationTest {
     assertEquals(order.getVersion() + 3, service.detail(order.getOrderId()).getVersion());
   }
 
+  /** 未指定预计仓库时可保存、提交和审核，接口省略该字段也遵循相同规则。 */
+  @Test
+  void expectedWarehouseIsOptionalThroughoutArrivalLifecycle() throws Exception {
+    var order = approved("10");
+    var request = arrival(order, "4");
+    request.setWarehouseId(null);
+    var draft = arrivalService.create(request);
+    assertNull(draft.getWarehouseId());
+    assertEquals("", draft.getWarehouseCode());
+    assertEquals("", draft.getWarehouseName());
+    var approved = action(action(draft, ArrivalAction.SUBMIT, ""), ArrivalAction.APPROVE, "");
+    assertNull(approved.getWarehouseId());
+    quantities(order, "0", "4");
+    assertEquals(ArrivalStatus.APPROVED, approved.getStatus());
+    String body =
+        """
+        {"arrivalDate":"2026-10-18","supplierId":1,"lines":[{"orderLineId":%d,"quantity":"2"}]}
+        """
+            .formatted(order.getLines().get(0).getLineId());
+    mvc.perform(post("/purchase/arrival").contentType(MediaType.APPLICATION_JSON).content(body))
+        .andExpect(jsonPath("$.code").value(200))
+        .andExpect(jsonPath("$.data.warehouseName").value(""));
+  }
+
+  /** 清空已有预计仓库必须实际写入 NULL 并清除快照，再次选择时恢复完整校验。 */
+  @Test
+  void clearingExpectedWarehousePersistsAndSpecifiedWarehouseIsValidated() {
+    var draft = arrivalService.create(arrival(approved("10"), "4"));
+    var request = editArrival(draft);
+    request.setWarehouseId(null);
+    var cleared = arrivalService.update(request);
+    assertNull(arrivalService.detail(cleared.getArrivalId()).getWarehouseId());
+    assertNull(
+        jdbc.queryForObject(
+            "SELECT warehouse_id FROM purchase_arrival WHERE arrival_id=?",
+            Long.class,
+            cleared.getArrivalId()));
+    assertEquals("", cleared.getWarehouseCode());
+    assertEquals("", cleared.getWarehouseName());
+    var select = editArrival(cleared);
+    select.setWarehouseId(999L);
+    assertThrows(ServiceException.class, () -> arrivalService.update(select));
+    select.setWarehouseId(1L);
+    jdbc.update("UPDATE md_warehouse SET status='1' WHERE warehouse_id=1");
+    assertThrows(ServiceException.class, () -> arrivalService.update(select));
+    jdbc.update("UPDATE md_warehouse SET status='0' WHERE warehouse_id=1");
+    var restored = arrivalService.update(select);
+    assertEquals(1L, restored.getWarehouseId());
+    assertEquals("W", restored.getWarehouseCode());
+    assertEquals(cleared.getVersion() + 1, restored.getVersion());
+  }
+
   /** 撤回和驳回准确释放占用，回到草稿后可编辑及实体逻辑删除。 */
   @Test
   void withdrawalRejectionAndDeletionReleaseCorrectly() {

@@ -32,6 +32,7 @@ public class PurchaseArrival extends BusinessEntity {
   private String supplierDeliveryNo;
 
   /** 预计入库仓库 ID。 */
+  @TableField(updateStrategy = FieldStrategy.ALWAYS)
   private Long warehouseId;
 
   /** 仓库编码快照。 */

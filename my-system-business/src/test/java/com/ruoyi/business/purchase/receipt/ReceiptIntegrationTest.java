@@ -387,6 +387,35 @@ class ReceiptIntegrationTest {
     assertEquals(ReceiptStatus.SUBMITTED, receipts.detail(submitted.getReceiptId()).getStatus());
   }
 
+  /** 未指定预计仓库的到货可参照；入库必须补选实际仓库后才能保存和记账。 */
+  @Test
+  void arrivalWithoutExpectedWarehouseCanBeReceived() {
+    var request = arrival(approved("10"), "6");
+    request.setWarehouseId(null);
+    var arrival =
+        action(
+            action(arrivalService.create(request), ArrivalAction.SUBMIT, ""),
+            ArrivalAction.APPROVE,
+            "");
+    var options = receipts.references(new ArrivalLineReferenceQuery());
+    assertEquals(1, options.getTotal());
+    var option = options.getRows().get(0);
+    assertNull(option.getWarehouseId());
+    assertEquals(Boolean.FALSE, option.getLocationEnabled());
+    assertEquals(1, receipts.resolve(List.of(option.getArrivalLineId())).size());
+    var input = receipt(arrival, "6", null);
+    assertThrows(ConstraintViolationException.class, () -> receipts.create(input));
+    input.getLines().get(0).setWarehouseId(1L);
+    var approved =
+        receiptAction(
+            receiptAction(receipts.create(input), ReceiptAction.SUBMIT, ""),
+            ReceiptAction.APPROVE,
+            "");
+    assertEquals(1L, approved.getLines().get(0).getWarehouseId());
+    stock("6");
+    receiptQuantities(arrival, "0", "6");
+  }
+
   /** 独立实际仓库夹具，不修改来源到货的预计仓库。 */
   private void secondWarehouse() {
     jdbc.execute(
