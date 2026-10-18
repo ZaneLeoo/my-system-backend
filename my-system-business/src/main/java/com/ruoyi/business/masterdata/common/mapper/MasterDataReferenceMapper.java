@@ -32,7 +32,7 @@ public interface MasterDataReferenceMapper {
 
   /** 已审核尚待入库的到货单仍占用仓库，作废单保留历史删除约束。 */
   @Select(
-      "SELECT (SELECT COUNT(*) FROM purchase_arrival a WHERE a.warehouse_id=#{id} AND a.del_flag='0' AND (#{openOnly}=false OR (a.status IN ('DRAFT','SUBMITTED') OR (a.status='APPROVED' AND EXISTS(SELECT 1 FROM purchase_arrival_line pending WHERE pending.arrival_id=a.arrival_id AND pending.del_flag='0' AND pending.received_quantity<pending.quantity))))) + (SELECT COUNT(*) FROM purchase_receipt r JOIN purchase_receipt_line rl ON rl.receipt_id=r.receipt_id WHERE r.warehouse_id=#{id} AND r.del_flag='0' AND rl.del_flag='0' AND (#{openOnly}=false OR r.status IN ('DRAFT','SUBMITTED'))) + (SELECT COUNT(*) FROM inventory_transaction it WHERE it.warehouse_id=#{id} AND #{openOnly}=false)")
+      "SELECT (SELECT COUNT(*) FROM purchase_arrival a WHERE a.warehouse_id=#{id} AND a.del_flag='0' AND (#{openOnly}=false OR (a.status IN ('DRAFT','SUBMITTED') OR (a.status='APPROVED' AND EXISTS(SELECT 1 FROM purchase_arrival_line pending WHERE pending.arrival_id=a.arrival_id AND pending.del_flag='0' AND pending.received_quantity<pending.quantity))))) + (SELECT COUNT(*) FROM purchase_receipt r JOIN purchase_receipt_line rl ON rl.receipt_id=r.receipt_id WHERE rl.warehouse_id=#{id} AND r.del_flag='0' AND rl.del_flag='0' AND (#{openOnly}=false OR r.status IN ('DRAFT','SUBMITTED'))) + (SELECT COUNT(*) FROM inventory_transaction it WHERE it.warehouse_id=#{id} AND #{openOnly}=false)")
   long warehouseArrivals(@Param("id") Long id, @Param("openOnly") boolean openOnly);
 
   /** 未作废下游入库单（包括草稿）阻止来源到货作废。 */
@@ -59,6 +59,6 @@ public interface MasterDataReferenceMapper {
 
   /** 已保存单据或库存历史固定仓库货位管理方式。 */
   @Select(
-      "SELECT (SELECT COUNT(*) FROM purchase_receipt WHERE warehouse_id=#{id} AND del_flag='0') + (SELECT COUNT(*) FROM inventory_transaction WHERE warehouse_id=#{id})")
+      "SELECT (SELECT COUNT(*) FROM purchase_receipt r JOIN purchase_receipt_line l ON l.receipt_id=r.receipt_id WHERE l.warehouse_id=#{id} AND r.del_flag='0' AND l.del_flag='0') + (SELECT COUNT(*) FROM inventory_transaction WHERE warehouse_id=#{id})")
   long warehouseModeReferences(@Param("id") Long id);
 }

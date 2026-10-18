@@ -9,6 +9,9 @@ import java.util.*;
 
 /** ReceiptLineInput 的显式数据约定。 */
 public class ReceiptLineInput {
+  /** 实际入库仓库 ID。 */
+  @NotNull @Positive private Long warehouseId;
+
   /** 已有行 ID。 */
   @Positive private Long lineId;
 
@@ -76,5 +79,15 @@ public class ReceiptLineInput {
   /** 设置行备注。 */
   public void setRemark(String remark) {
     this.remark = remark == null ? "" : remark.strip();
+  }
+
+  /** 返回实际入库仓库 ID。 */
+  public Long getWarehouseId() {
+    return warehouseId;
+  }
+
+  /** 设置实际入库仓库 ID。 */
+  public void setWarehouseId(Long warehouseId) {
+    this.warehouseId = warehouseId;
   }
 }

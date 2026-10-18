@@ -53,7 +53,7 @@ public class InventoryPostingService {
           || tx.getQuantityChange().compareTo(row.getQuantity()) != 0
           || !Objects.equals(tx.getItemId(), row.getItemId())
           || !Objects.equals(tx.getLocationId(), row.getLocationId())
-          || !Objects.equals(tx.getWarehouseId(), header.getWarehouseId())
+          || !Objects.equals(tx.getWarehouseId(), row.getWarehouseId())
           || !Objects.equals(tx.getUnitId(), row.getUnitId()))
         throw new ServiceException("原入库流水与单据快照不一致");
       post(header, row, tx, tx.getQuantityChange().negate(), time.toLocalDate(), time, reason);
@@ -71,7 +71,7 @@ public class InventoryPostingService {
       String reason) {
     var q =
         Wrappers.<InventoryBalance>lambdaQuery()
-            .eq(InventoryBalance::getWarehouseId, h.getWarehouseId())
+            .eq(InventoryBalance::getWarehouseId, row.getWarehouseId())
             .eq(InventoryBalance::getItemId, row.getItemId());
     if (row.getLocationId() == null) q.isNull(InventoryBalance::getLocationId);
     else q.eq(InventoryBalance::getLocationId, row.getLocationId());
@@ -79,7 +79,7 @@ public class InventoryPostingService {
     if (balance == null) {
       if (original != null) throw new ServiceException("原入库库存维度不存在");
       balance = new InventoryBalance();
-      balance.setWarehouseId(h.getWarehouseId());
+      balance.setWarehouseId(row.getWarehouseId());
       balance.setLocationId(row.getLocationId());
       balance.setItemId(row.getItemId());
       balance.setUnitId(row.getUnitId());
@@ -107,9 +107,9 @@ public class InventoryPostingService {
     tx.setReceiptId(h.getReceiptId());
     tx.setReceiptNo(h.getReceiptNo());
     tx.setReceiptLineId(row.getLineId());
-    tx.setWarehouseId(h.getWarehouseId());
-    tx.setWarehouseCode(h.getWarehouseCode());
-    tx.setWarehouseName(h.getWarehouseName());
+    tx.setWarehouseId(row.getWarehouseId());
+    tx.setWarehouseCode(row.getWarehouseCode());
+    tx.setWarehouseName(row.getWarehouseName());
     tx.setLocationId(row.getLocationId());
     tx.setLocationCode(row.getLocationCode());
     tx.setLocationName(row.getLocationName());
@@ -133,7 +133,8 @@ public class InventoryPostingService {
   private List<PurchaseReceiptLine> ordered(List<PurchaseReceiptLine> lines) {
     return lines.stream()
         .sorted(
-            Comparator.comparing(
+            Comparator.comparing(PurchaseReceiptLine::getWarehouseId)
+                .thenComparing(
                     PurchaseReceiptLine::getLocationId,
                     Comparator.nullsFirst(Comparator.naturalOrder()))
                 .thenComparing(PurchaseReceiptLine::getItemId)

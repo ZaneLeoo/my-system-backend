@@ -21,9 +21,6 @@ public class SaveReceiptRequest {
   /** 供应商 ID。 */
   @NotNull @Positive private Long supplierId;
 
-  /** 收货仓库 ID。 */
-  @NotNull @Positive private Long warehouseId;
-
   /** 备注。 */
   @Size(max = 500)
   private String remark = "";
@@ -71,16 +68,6 @@ public class SaveReceiptRequest {
   /** 设置供应商 ID。 */
   public void setSupplierId(Long supplierId) {
     this.supplierId = supplierId;
-  }
-
-  /** 返回收货仓库 ID。 */
-  public Long getWarehouseId() {
-    return warehouseId;
-  }
-
-  /** 设置收货仓库 ID。 */
-  public void setWarehouseId(Long warehouseId) {
-    this.warehouseId = warehouseId;
   }
 
   /** 返回备注。 */

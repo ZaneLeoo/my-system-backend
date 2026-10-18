@@ -8,9 +8,9 @@ import org.apache.ibatis.annotations.*;
 /** 到货参照仅返回来源选择必需字段，不返回金额或审计。 */
 public interface ArrivalLineReferenceMapper {
   String FIELDS =
-      "SELECT a.arrival_id,l.line_id AS arrival_line_id,a.arrival_no,l.line_no AS arrival_line_no,a.arrival_date,a.supplier_id,a.supplier_code,a.supplier_name,a.warehouse_id,a.warehouse_code,a.warehouse_name,w.location_enabled,l.order_id,l.order_line_id,l.order_no,l.order_line_no,l.item_id,l.item_code,l.item_name,l.specification,l.unit_id,l.unit_name,l.quantity_decimal_places,l.quantity AS arrival_quantity,l.pending_receipt_quantity,l.received_quantity,(l.quantity-l.pending_receipt_quantity-l.received_quantity) AS available_quantity FROM purchase_arrival a JOIN purchase_arrival_line l ON a.arrival_id=l.arrival_id JOIN md_warehouse w ON w.warehouse_id=a.warehouse_id ";
+      "SELECT a.arrival_id,l.line_id AS arrival_line_id,a.arrival_no,l.line_no AS arrival_line_no,a.arrival_date,a.supplier_id,a.supplier_code,a.supplier_name,a.warehouse_id,a.warehouse_code,a.warehouse_name,w.location_enabled,l.order_id,l.order_line_id,l.order_no,l.order_line_no,l.item_id,l.item_code,l.item_name,l.specification,l.unit_id,l.unit_name,l.quantity_decimal_places,l.quantity AS arrival_quantity,l.pending_receipt_quantity,l.received_quantity,(l.quantity-l.pending_receipt_quantity-l.received_quantity) AS available_quantity FROM purchase_arrival a JOIN purchase_arrival_line l ON a.arrival_id=l.arrival_id LEFT JOIN md_warehouse w ON w.warehouse_id=a.warehouse_id ";
   String ELIGIBLE =
-      " WHERE a.del_flag='0' AND l.del_flag='0' AND a.status='APPROVED' AND w.del_flag='0' AND w.status='0' AND l.quantity>l.pending_receipt_quantity+l.received_quantity ";
+      " WHERE a.del_flag='0' AND l.del_flag='0' AND a.status='APPROVED' AND l.quantity>l.pending_receipt_quantity+l.received_quantity ";
 
   /** 条件绑定且排序列由静态分支选择。 */
   @Select({

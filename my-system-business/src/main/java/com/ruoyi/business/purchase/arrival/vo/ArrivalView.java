@@ -33,7 +33,7 @@ public class ArrivalView {
   /** 供应商送货单号。 */
   private String supplierDeliveryNo;
 
-  /** 收货仓库 ID。 */
+  /** 预计入库仓库 ID。 */
   private Long warehouseId;
 
   /** 仓库编码快照。 */
@@ -175,12 +175,12 @@ public class ArrivalView {
     this.supplierDeliveryNo = supplierDeliveryNo;
   }
 
-  /** 返回收货仓库 ID。 */
+  /** 返回预计入库仓库 ID。 */
   public Long getWarehouseId() {
     return warehouseId;
   }
 
-  /** 设置收货仓库 ID。 */
+  /** 设置预计入库仓库 ID。 */
   public void setWarehouseId(Long warehouseId) {
     this.warehouseId = warehouseId;
   }

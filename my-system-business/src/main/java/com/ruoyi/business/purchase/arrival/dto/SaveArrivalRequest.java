@@ -21,7 +21,7 @@ public class SaveArrivalRequest {
   /** 供应商 ID。 */
   @NotNull @Positive private Long supplierId;
 
-  /** 收货仓库 ID。 */
+  /** 预计入库仓库 ID。 */
   @NotNull @Positive private Long warehouseId;
 
   /** 供应商送货单号。 */
@@ -77,12 +77,12 @@ public class SaveArrivalRequest {
     this.supplierId = supplierId;
   }
 
-  /** 返回收货仓库 ID。 */
+  /** 返回预计入库仓库 ID。 */
   public Long getWarehouseId() {
     return warehouseId;
   }
 
-  /** 设置收货仓库 ID。 */
+  /** 设置预计入库仓库 ID。 */
   public void setWarehouseId(Long warehouseId) {
     this.warehouseId = warehouseId;
   }

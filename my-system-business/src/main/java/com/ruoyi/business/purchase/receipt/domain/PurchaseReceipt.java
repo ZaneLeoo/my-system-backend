@@ -6,12 +6,9 @@ import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/** 采购入库单，审核后确认入库但不产生库存 */
+/** 采购入库单表头；实际仓库和货位由明细确定 */
 @TableName("purchase_receipt")
 public class PurchaseReceipt extends BusinessEntity {
-  /** 是否使用货位管理。 */
-  private Boolean locationEnabled;
-
   /** 入库单 ID。 */
   @TableId(type = IdType.AUTO)
   private Long receiptId;
@@ -30,15 +27,6 @@ public class PurchaseReceipt extends BusinessEntity {
 
   /** 供应商名称快照。 */
   private String supplierName;
-
-  /** 收货仓库 ID。 */
-  private Long warehouseId;
-
-  /** 仓库编码快照。 */
-  private String warehouseCode;
-
-  /** 仓库名称快照。 */
-  private String warehouseName;
 
   /** 收货经办人 ID。 */
   private Long receiverId;
@@ -152,36 +140,6 @@ public class PurchaseReceipt extends BusinessEntity {
   /** 设置供应商名称快照。 */
   public void setSupplierName(String supplierName) {
     this.supplierName = supplierName;
-  }
-
-  /** 返回收货仓库 ID。 */
-  public Long getWarehouseId() {
-    return warehouseId;
-  }
-
-  /** 设置收货仓库 ID。 */
-  public void setWarehouseId(Long warehouseId) {
-    this.warehouseId = warehouseId;
-  }
-
-  /** 返回仓库编码快照。 */
-  public String getWarehouseCode() {
-    return warehouseCode;
-  }
-
-  /** 设置仓库编码快照。 */
-  public void setWarehouseCode(String warehouseCode) {
-    this.warehouseCode = warehouseCode;
-  }
-
-  /** 返回仓库名称快照。 */
-  public String getWarehouseName() {
-    return warehouseName;
-  }
-
-  /** 设置仓库名称快照。 */
-  public void setWarehouseName(String warehouseName) {
-    this.warehouseName = warehouseName;
   }
 
   /** 返回收货经办人 ID。 */
@@ -342,15 +300,5 @@ public class PurchaseReceipt extends BusinessEntity {
   /** 设置作废原因。 */
   public void setVoidReason(String voidReason) {
     this.voidReason = voidReason;
-  }
-
-  /** 返回是否使用货位管理。 */
-  public Boolean getLocationEnabled() {
-    return locationEnabled;
-  }
-
-  /** 设置是否使用货位管理。 */
-  public void setLocationEnabled(Boolean locationEnabled) {
-    this.locationEnabled = locationEnabled;
   }
 }

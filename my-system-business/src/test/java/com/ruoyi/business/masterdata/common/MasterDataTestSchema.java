@@ -40,6 +40,19 @@ public final class MasterDataTestSchema {
     }
     try (var statement = connection.createStatement()) {
       statement.execute(
+          "ALTER TABLE purchase_receipt_line ADD COLUMN warehouse_id BIGINT NOT NULL");
+      statement.execute(
+          "ALTER TABLE purchase_receipt_line ADD COLUMN warehouse_code VARCHAR(64) NOT NULL");
+      statement.execute(
+          "ALTER TABLE purchase_receipt_line ADD COLUMN warehouse_name VARCHAR(100) NOT NULL");
+      statement.execute(
+          "ALTER TABLE purchase_receipt_line ADD COLUMN location_enabled BOOLEAN NOT NULL");
+      statement.execute("DROP INDEX idx_pr_warehouse");
+      statement.execute("ALTER TABLE purchase_receipt DROP COLUMN warehouse_id");
+      statement.execute("ALTER TABLE purchase_receipt DROP COLUMN warehouse_code");
+      statement.execute("ALTER TABLE purchase_receipt DROP COLUMN warehouse_name");
+      statement.execute("ALTER TABLE purchase_receipt DROP COLUMN location_enabled");
+      statement.execute(
           "ALTER TABLE purchase_order_line ADD COLUMN IF NOT EXISTS pending_arrival_quantity DECIMAL(15,6) NOT NULL DEFAULT 0");
       statement.execute(
           "ALTER TABLE purchase_order_line ADD COLUMN IF NOT EXISTS arrived_quantity DECIMAL(15,6) NOT NULL DEFAULT 0");

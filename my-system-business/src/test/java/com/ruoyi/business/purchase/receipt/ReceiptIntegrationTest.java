@@ -176,7 +176,7 @@ class ReceiptIntegrationTest {
     var arrival = confirmed("10");
     var draft = receipts.create(receipt(arrival, "6", null));
     assertTrue(draft.getReceiptNo().startsWith("PR"));
-    assertFalse(draft.getLocationEnabled());
+    assertFalse(draft.getLines().get(0).getLocationEnabled());
     assertEquals("tester", draft.getCreateBy());
     stock("0");
     receiptQuantities(arrival, "0", "0");
@@ -244,6 +244,153 @@ class ReceiptIntegrationTest {
     assertEquals(
         ReceiptProgress.FULLY_RECEIVED,
         arrivalService.list(query).getRows().get(0).getReceiptProgress());
+  }
+
+  /** 同一来源跨仓库拆分，混用货位模式，累计量、快照、筛选及冲销均按明细执行。 */
+  @Test
+  void warehouseSplitPostsAndReversesLineDimensions() throws Exception {
+    enableLocations();
+    secondWarehouse();
+    var arrival = confirmed("10");
+    var request = receipt(arrival, "4", 1L);
+    var second = receiptLine(arrival, "6", null);
+    second.setWarehouseId(2L);
+    request.getLines().add(second);
+    var draft = receipts.create(request);
+    assertEquals(List.of("W / 收货仓库", "W2 / 第二仓库"), draft.getWarehouseNames());
+    assertFalse(draft.getLines().get(1).getLocationEnabled());
+    assertTrue(draft.getLines().get(0).getLocationEnabled());
+    var query = new ReceiptQuery();
+    query.setWarehouseId(2L);
+    query.setPageSize(1);
+    assertEquals(1, receipts.list(query).getTotal());
+    assertEquals(2, receipts.list(query).getRows().get(0).getWarehouseNames().size());
+    assertNull(PageHelper.getLocalPage());
+    mvc.perform(get("/purchase/receipt/" + draft.getReceiptId()))
+        .andExpect(jsonPath("$.data.warehouseId").doesNotExist())
+        .andExpect(jsonPath("$.data.lines[1].warehouseId").value(2));
+    var submitted = receiptAction(draft, ReceiptAction.SUBMIT, "");
+    receiptQuantities(arrival, "10", "0");
+    var approved = receiptAction(submitted, ReceiptAction.APPROVE, "");
+    assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM inventory_balance", Integer.class));
+    assertEquals(
+        0,
+        jdbc.queryForObject(
+                "SELECT quantity FROM inventory_balance WHERE warehouse_id=2", BigDecimal.class)
+            .compareTo(new BigDecimal("6")));
+    assertEquals(
+        0,
+        jdbc.queryForObject(
+                "SELECT quantity FROM inventory_balance WHERE warehouse_id=1 AND location_id=1",
+                BigDecimal.class)
+            .compareTo(new BigDecimal("4")));
+    receiptQuantities(arrival, "0", "10");
+    jdbc.update("UPDATE md_warehouse SET warehouse_name='更名',status='1'");
+    assertEquals(
+        "第二仓库", receipts.detail(approved.getReceiptId()).getLines().get(1).getWarehouseName());
+    receiptAction(approved, ReceiptAction.VOID, "跨仓冲销");
+    stock("0");
+    receiptQuantities(arrival, "0", "0");
+    assertEquals(
+        4, jdbc.queryForObject("SELECT COUNT(*) FROM inventory_transaction", Integer.class));
+    assertEquals(
+        2,
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM inventory_transaction WHERE reversal_of IS NOT NULL",
+            Integer.class));
+    assertEquals(
+        "第二仓库",
+        jdbc.queryForObject(
+            "SELECT warehouse_name FROM inventory_transaction WHERE warehouse_id=2 AND business_type='PURCHASE_RECEIPT_VOID'",
+            String.class));
+  }
+
+  /** 预计仓库停用不妨碍选择来源及改用有效实际仓库，但实际仓库仍必须启用。 */
+  @Test
+  void expectedWarehouseDoesNotRestrictActualDestination() {
+    secondWarehouse();
+    var arrival = confirmed("5");
+    jdbc.update("UPDATE md_warehouse SET status='1' WHERE warehouse_id=1");
+    assertEquals(1, receipts.references(new ArrivalLineReferenceQuery()).getTotal());
+    assertEquals(1, receipts.resolve(List.of(arrival.getLines().get(0).getLineId())).size());
+    var request = receipt(arrival, "5", null);
+    assertThrows(ServiceException.class, () -> receipts.create(request));
+    request.getLines().get(0).setWarehouseId(2L);
+    var draft = receipts.create(request);
+    assertEquals(2L, draft.getLines().get(0).getWarehouseId());
+    var warehouse = new SaveWarehouseRequest();
+    warehouse.setWarehouseId(2L);
+    warehouse.setVersion(0);
+    warehouse.setWarehouseCode("W2");
+    warehouse.setWarehouseName("第二仓库");
+    warehouse.setLocationEnabled(false);
+    warehouse.setStatus(EnableStatus.DISABLED);
+    assertThrows(
+        ServiceException.class, () -> context.getBean(WarehouseService.class).update(warehouse));
+    warehouse.setStatus(EnableStatus.ENABLED);
+    warehouse.setLocationEnabled(true);
+    assertThrows(
+        ServiceException.class, () -> context.getBean(WarehouseService.class).update(warehouse));
+    assertThrows(
+        ServiceException.class, () -> context.getBean(WarehouseService.class).delete(2L, 0));
+  }
+
+  /** 仓库参与重复维度判定，但所有仓库的拆分数量合计受同一来源额度保护。 */
+  @Test
+  void crossWarehouseAggregateAndLocationOwnershipAreValidated() {
+    enableLocations();
+    secondWarehouse();
+    var arrival = confirmed("10");
+    var request = receipt(arrival, "6", 1L);
+    var second = receiptLine(arrival, "5", null);
+    second.setWarehouseId(2L);
+    request.getLines().add(second);
+    assertThrows(ServiceException.class, () -> receipts.create(request));
+    second.setQuantity(new BigDecimal("4"));
+    second.setLocationId(1L);
+    assertThrows(ServiceException.class, () -> receipts.create(request));
+    second.setLocationId(null);
+    second.setWarehouseId(null);
+    assertThrows(ConstraintViolationException.class, () -> receipts.create(request));
+    second.setWarehouseId(2L);
+    request.getLines().add(receiptLine(arrival, "1", null));
+    request.getLines().get(2).setWarehouseId(2L);
+    assertThrows(ServiceException.class, () -> receipts.create(request));
+    request.getLines().remove(2);
+    var draft = receipts.create(request);
+    var submitted = receiptAction(draft, ReceiptAction.SUBMIT, "");
+    assertThrows(ServiceException.class, () -> receipts.create(request));
+    receiptAction(submitted, ReceiptAction.REJECT, "退回");
+    receiptQuantities(arrival, "0", "0");
+  }
+
+  /** 多仓记账中第二仓溢出时，首仓余额、流水及来源反写均回滚。 */
+  @Test
+  void multiWarehousePostingFailureRollsBackEveryDimension() {
+    secondWarehouse();
+    var arrival = confirmed("10");
+    var request = receipt(arrival, "4", null);
+    var second = receiptLine(arrival, "6", null);
+    second.setWarehouseId(2L);
+    request.getLines().add(second);
+    var submitted = receiptAction(receipts.create(request), ReceiptAction.SUBMIT, "");
+    jdbc.update(
+        "INSERT INTO inventory_balance(warehouse_id,item_id,unit_id,quantity,version,create_by,create_time) VALUES(2,1,1,99999999999999.999999,0,'fixture',NOW())");
+    assertThrows(ServiceException.class, () -> receiptAction(submitted, ReceiptAction.APPROVE, ""));
+    assertEquals(
+        0,
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM inventory_balance WHERE warehouse_id=1", Integer.class));
+    assertEquals(
+        0, jdbc.queryForObject("SELECT COUNT(*) FROM inventory_transaction", Integer.class));
+    receiptQuantities(arrival, "10", "0");
+    assertEquals(ReceiptStatus.SUBMITTED, receipts.detail(submitted.getReceiptId()).getStatus());
+  }
+
+  /** 独立实际仓库夹具，不修改来源到货的预计仓库。 */
+  private void secondWarehouse() {
+    jdbc.execute(
+        "INSERT INTO md_warehouse(warehouse_id,warehouse_code,warehouse_name,create_by,create_time) VALUES(2,'W2','第二仓库','fixture',NOW())");
   }
 
   /** 撤回和驳回只释放占用，草稿逻辑删除不记账。 */
@@ -502,7 +649,7 @@ class ReceiptIntegrationTest {
     login(Set.of("*:*:*"));
     mvc.perform(get("/purchase/receipt/" + d.getReceiptId()))
         .andExpect(jsonPath("$.data.lines[0].quantity").value("4.000000"))
-        .andExpect(jsonPath("$.data.locationEnabled").value(false));
+        .andExpect(jsonPath("$.data.lines[0].locationEnabled").value(false));
     mvc.perform(get("/purchase/receipt/list").param("sortField", "receipt_date desc; drop table"))
         .andExpect(jsonPath("$.code").value(500));
     assertNull(PageHelper.getLocalPage());
@@ -514,7 +661,7 @@ class ReceiptIntegrationTest {
     var a = confirmed("10");
     String body =
         """
-{"receiptDate":"2026-10-18","supplierId":1,"warehouseId":1,"remark":"  中文入库  ","lines":[{"arrivalLineId":%d,"quantity":"1.25","remark":null}]}
+{"receiptDate":"2026-10-18","supplierId":1,"remark":"  中文入库  ","lines":[{"warehouseId":1,"arrivalLineId":%d,"quantity":"1.25","remark":null}]}
 """
             .formatted(a.getLines().get(0).getLineId());
     mvc.perform(post("/purchase/receipt").contentType(MediaType.APPLICATION_JSON).content(body))
@@ -565,7 +712,7 @@ class ReceiptIntegrationTest {
             }));
   }
 
-  /** 多来源合并保存；跨供应商、跨仓库来源禁止混入。 */
+  /** 多来源合并保存，预计仓库不限制实际仓库，跨供应商仍拒绝。 */
   @Test
   void mergeAndSourceContext() {
     var a = confirmed("5");
@@ -578,7 +725,8 @@ class ReceiptIntegrationTest {
     assertEquals(2, confirmed.getLines().size());
     stock("7");
     jdbc.update("UPDATE purchase_arrival SET warehouse_id=2 WHERE arrival_id=?", b.getArrivalId());
-    assertThrows(ServiceException.class, () -> receipts.create(r));
+    r.getLines().forEach(line -> line.setQuantity(BigDecimal.ONE));
+    assertEquals(2, receipts.create(r).getLines().size());
     jdbc.update(
         "UPDATE purchase_arrival SET warehouse_id=1,supplier_id=2 WHERE arrival_id=?",
         b.getArrivalId());
@@ -829,6 +977,7 @@ class ReceiptIntegrationTest {
     var r = new ReceiptLineInput();
     r.setArrivalLineId(a.getLines().get(0).getLineId());
     r.setQuantity(new BigDecimal(quantity));
+    r.setWarehouseId(a.getWarehouseId());
     r.setLocationId(location);
     return r;
   }
@@ -838,7 +987,6 @@ class ReceiptIntegrationTest {
     var r = new SaveReceiptRequest();
     r.setReceiptDate(a.getArrivalDate());
     r.setSupplierId(a.getSupplierId());
-    r.setWarehouseId(a.getWarehouseId());
     r.setLines(new ArrayList<>(List.of(receiptLine(a, quantity, location))));
     return r;
   }

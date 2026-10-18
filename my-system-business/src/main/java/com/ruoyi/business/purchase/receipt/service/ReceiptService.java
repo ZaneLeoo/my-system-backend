@@ -95,7 +95,10 @@ public class ReceiptService {
     var w = Wrappers.<PurchaseReceipt>lambdaQuery();
     if (q.getReceiptNo() != null) w.like(PurchaseReceipt::getReceiptNo, escape(q.getReceiptNo()));
     if (q.getSupplierId() != null) w.eq(PurchaseReceipt::getSupplierId, q.getSupplierId());
-    if (q.getWarehouseId() != null) w.eq(PurchaseReceipt::getWarehouseId, q.getWarehouseId());
+    if (q.getWarehouseId() != null)
+      w.apply(
+          "EXISTS (SELECT 1 FROM purchase_receipt_line l WHERE l.receipt_id=purchase_receipt.receipt_id AND l.del_flag='0' AND l.warehouse_id={0})",
+          q.getWarehouseId());
     if (q.getStatus() != null)
       w.eq(PurchaseReceipt::getStatus, ReceiptStatus.fromCode(q.getStatus()));
     if (q.getBeginDate() != null) w.ge(PurchaseReceipt::getReceiptDate, q.getBeginDate());
@@ -120,7 +123,27 @@ public class ReceiptService {
       PageHelper.startPage(q.getPageNum(), q.getPageSize()).setReasonable(false);
       var found = receipts.selectList(w);
       long total = new PageInfo<>(found).getTotal();
-      return new PageResult<>(found.stream().map(ReceiptView::from).toList(), total);
+      PageHelper.clearPage();
+      var result = found.stream().map(ReceiptView::from).toList();
+      if (!found.isEmpty()) {
+        var byReceipt =
+            lines
+                .selectList(
+                    Wrappers.<PurchaseReceiptLine>lambdaQuery()
+                        .in(
+                            PurchaseReceiptLine::getReceiptId,
+                            found.stream().map(PurchaseReceipt::getReceiptId).toList())
+                        .orderByAsc(
+                            PurchaseReceiptLine::getReceiptId,
+                            PurchaseReceiptLine::getLineNo,
+                            PurchaseReceiptLine::getLineId))
+                .stream()
+                .collect(Collectors.groupingBy(PurchaseReceiptLine::getReceiptId));
+        for (var view : result)
+          view.setWarehouseNames(
+              warehouseNames(byReceipt.getOrDefault(view.getReceiptId(), List.of())));
+      }
+      return new PageResult<>(result, total);
     } finally {
       PageHelper.clearPage();
     }
@@ -134,6 +157,7 @@ public class ReceiptService {
     if (header == null) throw new ServiceException("入库单不存在或已删除");
     var view = ReceiptView.from(header);
     var saved = existingLines(id);
+    view.setWarehouseNames(warehouseNames(saved));
     var sources =
         saved.isEmpty()
             ? Map.<Long, PurchaseArrivalLine>of()
@@ -222,12 +246,7 @@ public class ReceiptService {
     header.setReceiptNo("PENDING-" + UUID.randomUUID());
     var places =
         validateInput(
-            request.getReceiptDate(),
-            request.getSupplierId(),
-            request.getWarehouseId(),
-            request.getLines(),
-            sources,
-            true);
+            request.getReceiptDate(), request.getSupplierId(), request.getLines(), sources, true);
     copyHeader(request, header, sources);
     receipts.insert(header);
     header.setReceiptNo(
@@ -249,12 +268,7 @@ public class ReceiptService {
     var source = lockSources(request.getLines());
     var places =
         validateInput(
-            request.getReceiptDate(),
-            request.getSupplierId(),
-            request.getWarehouseId(),
-            request.getLines(),
-            source,
-            true);
+            request.getReceiptDate(), request.getSupplierId(), request.getLines(), source, true);
     copyHeader(request, header, source);
     saveLines(header, request.getLines(), source, places, existingLines(header.getReceiptId()));
     updateVersion(header);
@@ -288,11 +302,10 @@ public class ReceiptService {
       validateInput(
           header.getReceiptDate(),
           header.getSupplierId(),
-          header.getWarehouseId(),
           input,
           source,
           action == ReceiptAction.SUBMIT);
-    else lockWarehouse(header.getWarehouseId());
+    else lockWarehouses(input);
     postQuantities(input, source, action);
     if (action == ReceiptAction.APPROVE) inventory.receive(header, saved);
     if (action == ReceiptAction.VOID) inventory.reverse(header, saved, request.getReason());
@@ -364,12 +377,12 @@ public class ReceiptService {
   private Map<Long, Location> validateInput(
       LocalDate date,
       Long supplierId,
-      Long warehouseId,
       List<ReceiptLineInput> input,
       Sources source,
       boolean checkAvailable) {
-    var warehouse = lockWarehouse(warehouseId);
-    if (warehouse.getStatus() != EnableStatus.ENABLED) throw new ServiceException("仓库已停用");
+    var selectedWarehouses = lockWarehouses(input);
+    if (selectedWarehouses.values().stream().anyMatch(w -> w.getStatus() != EnableStatus.ENABLED))
+      throw new ServiceException("入库仓库已停用");
     var supplier =
         suppliers.selectOne(
             Wrappers.<com.ruoyi.business.masterdata.supplier.domain.Supplier>lambdaQuery()
@@ -391,9 +404,7 @@ public class ReceiptService {
       var place =
           locations.selectOne(
               Wrappers.<Location>lambdaQuery().eq(Location::getLocationId, id).last("FOR UPDATE"));
-      if (place == null
-          || place.getStatus() != EnableStatus.ENABLED
-          || !warehouseId.equals(place.getWarehouseId()))
+      if (place == null || place.getStatus() != EnableStatus.ENABLED)
         throw new ServiceException("货位无效、停用或不属于当前仓库");
       places.put(id, place);
     }
@@ -421,17 +432,21 @@ public class ReceiptService {
       var line = source.lines.get(row.getArrivalLineId());
       var header = source.headers.get(line.getArrivalId());
       if (header.getStatus() != ArrivalStatus.APPROVED) throw new ServiceException("来源到货单未审核或已作废");
-      if (!supplierId.equals(header.getSupplierId())
-          || !warehouseId.equals(header.getWarehouseId()))
-        throw new ServiceException("一张入库单只能参照同供应商、同仓库的到货明细");
+      if (!supplierId.equals(header.getSupplierId()))
+        throw new ServiceException("一张入库单只能参照同供应商的到货明细");
+      var warehouse = selectedWarehouses.get(row.getWarehouseId());
+      var place = places.get(row.getLocationId());
+      if (place != null && !row.getWarehouseId().equals(place.getWarehouseId()))
+        throw new ServiceException("货位不属于本行入库仓库");
       if (date.isBefore(header.getArrivalDate())) throw new ServiceException("入库日期不能早于来源到货日期");
       if (row.getQuantity().stripTrailingZeros().scale() > line.getQuantityDecimalPlaces())
         throw new ServiceException("入库数量超出来源允许的小数位");
       if (Boolean.TRUE.equals(warehouse.getLocationEnabled()) != (row.getLocationId() != null))
         throw new ServiceException(
             Boolean.TRUE.equals(warehouse.getLocationEnabled()) ? "请选择入库货位" : "当前仓库不使用货位，不能指定货位");
-      if (!seen.add(row.getArrivalLineId() + ":" + row.getLocationId()))
-        throw new ServiceException("同一来源到货行不能重复使用相同货位");
+      if (!seen.add(
+          row.getArrivalLineId() + ":" + row.getWarehouseId() + ":" + row.getLocationId()))
+        throw new ServiceException("同一来源到货行不能重复使用相同仓库和货位");
       var unit = lockedUnits.get(line.getUnitId());
       var item = lockedItems.get(line.getItemId());
       if (unit == null || unit.getStatus() != EnableStatus.ENABLED)
@@ -453,6 +468,23 @@ public class ReceiptService {
     return places;
   }
 
+  /** 实际仓库按 ID 顺序加锁，再由调用方锁货位，支持跨仓库明细。 */
+  private Map<Long, Warehouse> lockWarehouses(List<ReceiptLineInput> input) {
+    var result = new LinkedHashMap<Long, Warehouse>();
+    for (Long id :
+        input.stream().map(ReceiptLineInput::getWarehouseId).distinct().sorted().toList())
+      result.put(id, lockWarehouse(id));
+    return result;
+  }
+
+  /** 从明细快照汇总列表仓库摘要，不读取当前档案名称。 */
+  private List<String> warehouseNames(List<PurchaseReceiptLine> rows) {
+    return rows.stream()
+        .map(r -> r.getWarehouseCode() + " / " + r.getWarehouseName())
+        .distinct()
+        .toList();
+  }
+
   /** 当前仓库行锁与仓库、货位维护共用。 */
   private Warehouse lockWarehouse(Long id) {
     var w =
@@ -462,18 +494,13 @@ public class ReceiptService {
     return w;
   }
 
-  /** 供应商及来源交易信息保持快照，货位模式取当前持锁仓库。 */
+  /** 表头仅保存供应商等整单快照，实际仓库由明细独立保存。 */
   private void copyHeader(SaveReceiptRequest r, PurchaseReceipt h, Sources source) {
     var first = source.headers.values().iterator().next();
-    var w = lockWarehouse(r.getWarehouseId());
     h.setReceiptDate(r.getReceiptDate());
     h.setSupplierId(first.getSupplierId());
     h.setSupplierCode(first.getSupplierCode());
     h.setSupplierName(first.getSupplierName());
-    h.setWarehouseId(first.getWarehouseId());
-    h.setWarehouseCode(first.getWarehouseCode());
-    h.setWarehouseName(first.getWarehouseName());
-    h.setLocationEnabled(w.getLocationEnabled());
     h.setRemark(r.getRemark());
     h.setLineCount(r.getLines().size());
   }
@@ -487,6 +514,7 @@ public class ReceiptService {
       List<PurchaseReceiptLine> old) {
     var existing =
         old.stream().collect(Collectors.toMap(PurchaseReceiptLine::getLineId, Function.identity()));
+    var selectedWarehouses = lockWarehouses(input);
     var retained = new HashSet<Long>();
     for (int i = 0; i < input.size(); i++) {
       var r = input.get(i);
@@ -512,6 +540,14 @@ public class ReceiptService {
       row.setSpecification(s.getSpecification());
       row.setUnitId(s.getUnitId());
       row.setUnitName(s.getUnitName());
+      var warehouse = selectedWarehouses.get(r.getWarehouseId());
+      // 未更换仓库时保留已有快照，避免草稿编辑刷新历史名称。
+      if (!Objects.equals(row.getWarehouseId(), warehouse.getWarehouseId())) {
+        row.setWarehouseId(warehouse.getWarehouseId());
+        row.setWarehouseCode(warehouse.getWarehouseCode());
+        row.setWarehouseName(warehouse.getWarehouseName());
+        row.setLocationEnabled(warehouse.getLocationEnabled());
+      }
       row.setLocationId(r.getLocationId());
       row.setLocationCode(p == null ? "" : p.getLocationCode());
       row.setLocationName(p == null ? "" : p.getLocationName());
@@ -574,6 +610,7 @@ public class ReceiptService {
     var r = new ReceiptLineInput();
     r.setLineId(line.getLineId());
     r.setArrivalLineId(line.getArrivalLineId());
+    r.setWarehouseId(line.getWarehouseId());
     r.setLocationId(line.getLocationId());
     r.setQuantity(line.getQuantity());
     r.setRemark(line.getRemark());

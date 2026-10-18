@@ -9,8 +9,8 @@ import java.util.List;
 
 /** 入库单快照响应 */
 public class ReceiptView {
-  /** 是否使用货位管理。 */
-  private Boolean locationEnabled;
+  /** 实际入库仓库快照摘要。 */
+  private List<String> warehouseNames;
 
   /** 入库单 ID。 */
   private Long receiptId;
@@ -29,15 +29,6 @@ public class ReceiptView {
 
   /** 供应商名称快照。 */
   private String supplierName;
-
-  /** 收货仓库 ID。 */
-  private Long warehouseId;
-
-  /** 仓库编码快照。 */
-  private String warehouseCode;
-
-  /** 仓库名称快照。 */
-  private String warehouseName;
 
   /** 收货经办人 ID。 */
   private Long receiverId;
@@ -160,36 +151,6 @@ public class ReceiptView {
   /** 设置供应商名称快照。 */
   public void setSupplierName(String supplierName) {
     this.supplierName = supplierName;
-  }
-
-  /** 返回收货仓库 ID。 */
-  public Long getWarehouseId() {
-    return warehouseId;
-  }
-
-  /** 设置收货仓库 ID。 */
-  public void setWarehouseId(Long warehouseId) {
-    this.warehouseId = warehouseId;
-  }
-
-  /** 返回仓库编码快照。 */
-  public String getWarehouseCode() {
-    return warehouseCode;
-  }
-
-  /** 设置仓库编码快照。 */
-  public void setWarehouseCode(String warehouseCode) {
-    this.warehouseCode = warehouseCode;
-  }
-
-  /** 返回仓库名称快照。 */
-  public String getWarehouseName() {
-    return warehouseName;
-  }
-
-  /** 设置仓库名称快照。 */
-  public void setWarehouseName(String warehouseName) {
-    this.warehouseName = warehouseName;
   }
 
   /** 返回收货经办人 ID。 */
@@ -405,16 +366,12 @@ public class ReceiptView {
   /** 显式映射业务快照，不返回内部删除标记。 */
   public static ReceiptView from(PurchaseReceipt entity) {
     ReceiptView result = new ReceiptView();
-    result.setLocationEnabled(entity.getLocationEnabled());
     result.setReceiptId(entity.getReceiptId());
     result.setReceiptNo(entity.getReceiptNo());
     result.setReceiptDate(entity.getReceiptDate());
     result.setSupplierId(entity.getSupplierId());
     result.setSupplierCode(entity.getSupplierCode());
     result.setSupplierName(entity.getSupplierName());
-    result.setWarehouseId(entity.getWarehouseId());
-    result.setWarehouseCode(entity.getWarehouseCode());
-    result.setWarehouseName(entity.getWarehouseName());
     result.setReceiverId(entity.getReceiverId());
     result.setReceiverName(entity.getReceiverName());
     result.setDeptId(entity.getDeptId());
@@ -438,13 +395,13 @@ public class ReceiptView {
     return result;
   }
 
-  /** 返回是否使用货位管理。 */
-  public Boolean getLocationEnabled() {
-    return locationEnabled;
+  /** 返回实际入库仓库快照摘要。 */
+  public List<String> getWarehouseNames() {
+    return warehouseNames;
   }
 
-  /** 设置是否使用货位管理。 */
-  public void setLocationEnabled(Boolean locationEnabled) {
-    this.locationEnabled = locationEnabled;
+  /** 设置实际入库仓库快照摘要。 */
+  public void setWarehouseNames(List<String> warehouseNames) {
+    this.warehouseNames = warehouseNames;
   }
 }

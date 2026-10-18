@@ -10,6 +10,18 @@ import java.util.*;
 /** PurchaseReceiptLine 的显式数据约定。 */
 @TableName("purchase_receipt_line")
 public class PurchaseReceiptLine extends BusinessEntity {
+  /** 实际入库仓库 ID。 */
+  private Long warehouseId;
+
+  /** 仓库编码快照。 */
+  private String warehouseCode;
+
+  /** 仓库名称快照。 */
+  private String warehouseName;
+
+  /** 本行货位管理方式快照。 */
+  private Boolean locationEnabled;
+
   /** 入库明细 ID。 */
   @TableId(type = IdType.AUTO)
   private Long lineId;
@@ -309,5 +321,45 @@ public class PurchaseReceiptLine extends BusinessEntity {
   /** 设置行备注。 */
   public void setRemark(String remark) {
     this.remark = remark;
+  }
+
+  /** 返回实际入库仓库 ID。 */
+  public Long getWarehouseId() {
+    return warehouseId;
+  }
+
+  /** 设置实际入库仓库 ID。 */
+  public void setWarehouseId(Long warehouseId) {
+    this.warehouseId = warehouseId;
+  }
+
+  /** 返回仓库编码快照。 */
+  public String getWarehouseCode() {
+    return warehouseCode;
+  }
+
+  /** 设置仓库编码快照。 */
+  public void setWarehouseCode(String warehouseCode) {
+    this.warehouseCode = warehouseCode;
+  }
+
+  /** 返回仓库名称快照。 */
+  public String getWarehouseName() {
+    return warehouseName;
+  }
+
+  /** 设置仓库名称快照。 */
+  public void setWarehouseName(String warehouseName) {
+    this.warehouseName = warehouseName;
+  }
+
+  /** 返回本行货位管理方式快照。 */
+  public Boolean getLocationEnabled() {
+    return locationEnabled;
+  }
+
+  /** 设置本行货位管理方式快照。 */
+  public void setLocationEnabled(Boolean locationEnabled) {
+    this.locationEnabled = locationEnabled;
   }
 }
