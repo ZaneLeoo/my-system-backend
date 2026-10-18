@@ -64,6 +64,32 @@ public class PurchaseOrderLine extends BusinessEntity {
   /** 行备注。 */
   private String remark;
 
+  /** 待审核到货数量，由到货事务维护。 */
+  private BigDecimal pendingArrivalQuantity = BigDecimal.ZERO;
+
+  /** 已确认到货数量，由到货事务维护。 */
+  private BigDecimal arrivedQuantity = BigDecimal.ZERO;
+
+  /** 返回待审核到货数量。 */
+  public BigDecimal getPendingArrivalQuantity() {
+    return pendingArrivalQuantity;
+  }
+
+  /** 设置待审核到货数量。 */
+  public void setPendingArrivalQuantity(BigDecimal value) {
+    this.pendingArrivalQuantity = value;
+  }
+
+  /** 返回已确认到货数量。 */
+  public BigDecimal getArrivedQuantity() {
+    return arrivedQuantity;
+  }
+
+  /** 设置已确认到货数量。 */
+  public void setArrivedQuantity(BigDecimal value) {
+    this.arrivedQuantity = value;
+  }
+
   /** 返回明细行 ID。 */
   public Long getLineId() {
     return lineId;

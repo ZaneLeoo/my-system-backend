@@ -95,6 +95,7 @@ class StorageIntegrationTest {
             .replaceAll("(?m)^SET NAMES.*;", "")
             .replaceAll("ENGINE=InnoDB[^;]*", "");
     schemaConnection = source.getConnection();
+    com.ruoyi.business.masterdata.common.MasterDataTestSchema.create(schemaConnection);
     try (var sql = schemaConnection.createStatement()) {
       for (String statement : schema.split(";")) if (!statement.isBlank()) sql.execute(statement);
     }
@@ -525,6 +526,7 @@ class StorageIntegrationTest {
   @EnableMethodSecurity
   @MapperScan({
     "com.ruoyi.business.masterdata.warehouse.mapper",
+    "com.ruoyi.business.masterdata.common.mapper",
     "com.ruoyi.business.masterdata.location.mapper"
   })
   @Import({

@@ -96,7 +96,28 @@ public class OrderService {
       PageHelper.startPage(query.getPageNum(), query.getPageSize()).setReasonable(false);
       List<PurchaseOrder> found = orders.selectList(wrapper);
       long total = new PageInfo<>(found).getTotal();
-      return new PageResult<>(found.stream().map(OrderView::from).toList(), total);
+      PageHelper.clearPage();
+      Map<Long, ArrivalProgress> progress =
+          found.isEmpty()
+              ? Map.of()
+              : orders
+                  .arrivalProgress(found.stream().map(PurchaseOrder::getOrderId).toList())
+                  .stream()
+                  .collect(
+                      Collectors.toMap(
+                          OrderArrivalProgress::getOrderId,
+                          OrderArrivalProgress::getArrivalProgress));
+      return new PageResult<>(
+          found.stream()
+              .map(
+                  row -> {
+                    OrderView view = OrderView.from(row);
+                    view.setArrivalProgress(
+                        progress.getOrDefault(row.getOrderId(), ArrivalProgress.NOT_ARRIVED));
+                    return view;
+                  })
+              .toList(),
+          total);
     } finally {
       PageHelper.clearPage();
     }
@@ -108,6 +129,15 @@ public class OrderService {
     PurchaseOrder order = require(id);
     OrderView view = OrderView.from(order);
     view.setLines(existingLines(id).stream().map(OrderLineView::from).toList());
+    boolean any = view.getLines().stream().anyMatch(line -> line.getArrivedQuantity().signum() > 0);
+    boolean all =
+        !view.getLines().isEmpty()
+            && view.getLines().stream()
+                .allMatch(line -> line.getArrivedQuantity().compareTo(line.getQuantity()) == 0);
+    view.setArrivalProgress(
+        all
+            ? ArrivalProgress.FULLY_ARRIVED
+            : any ? ArrivalProgress.PARTIALLY_ARRIVED : ArrivalProgress.NOT_ARRIVED);
     return view;
   }
 
@@ -250,6 +280,8 @@ public class OrderService {
         order.setReviewRemark(request.getReason());
       }
       case CLOSE -> {
+        if (orders.unfinishedArrivals(id) > 0)
+          throw new ServiceException("存在草稿或已提交的到货单，请先处理后再关闭订单");
         order.setClosedBy(actor);
         order.setClosedTime(time);
         order.setCloseReason(request.getReason());

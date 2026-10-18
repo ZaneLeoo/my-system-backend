@@ -9,6 +9,19 @@ import java.util.List;
 
 /** 订单对外响应，金额用十进制字符串传输。 */
 public class OrderView {
+  /** 与审批状态独立的行级到货进度。 */
+  private ArrivalProgress arrivalProgress = ArrivalProgress.NOT_ARRIVED;
+
+  /** 返回到货执行进度。 */
+  public ArrivalProgress getArrivalProgress() {
+    return arrivalProgress;
+  }
+
+  /** 设置到货执行进度。 */
+  public void setArrivalProgress(ArrivalProgress arrivalProgress) {
+    this.arrivalProgress = arrivalProgress;
+  }
+
   /** 订单 ID。 */
   private Long orderId;
 

@@ -112,8 +112,8 @@ public class SupplierServiceImpl implements SupplierService {
   public void update(SaveSupplierRequest request) {
     Supplier supplier = lockExisting(request.getSupplierId(), request.getVersion());
     if (request.getStatus() == EnableStatus.DISABLED
-        && references.supplierOrders(supplier.getSupplierId(), true) > 0)
-      throw new ServiceException("存在未关闭采购订单，不能停用供应商");
+        && references.supplierPurchaseDocuments(supplier.getSupplierId(), true) > 0)
+      throw new ServiceException("存在未完成采购单据，不能停用供应商");
     checkUnique(request, supplier.getSupplierId());
     copyFields(request, supplier);
     if (supplier.getVersion() == Integer.MAX_VALUE) throw new ServiceException("供应商版本已达上限，请联系管理员");
@@ -136,7 +136,8 @@ public class SupplierServiceImpl implements SupplierService {
   @Transactional(rollbackFor = Exception.class)
   public void delete(Long id, Integer version) {
     Supplier supplier = lockExisting(id, version);
-    if (references.supplierOrders(id, false) > 0) throw new ServiceException("存在采购订单引用，不能删除供应商");
+    if (references.supplierPurchaseDocuments(id, false) > 0)
+      throw new ServiceException("存在采购单据引用，不能删除供应商");
     if (mapper.deleteById(supplier) != 1) throw new ServiceException("供应商已变更，请刷新后重试");
   }
 

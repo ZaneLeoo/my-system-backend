@@ -15,18 +15,23 @@ public interface MasterDataReferenceMapper {
       "SELECT COUNT(*) FROM md_item WHERE (base_unit_id=#{id} OR purchase_unit_id=#{id} OR sales_unit_id=#{id}) AND del_flag='0' AND (#{enabledOnly}=false OR status='0')")
   long unitItems(@Param("id") Long id, @Param("enabledOnly") boolean enabledOnly);
 
-  /** 查询未删除采购订单的供应商引用；未关闭范围包含草稿。 */
+  /** 查询订单和到货的供应商引用，未完成范围包含草稿及待入库到货。 */
   @Select(
-      "SELECT COUNT(*) FROM purchase_order WHERE supplier_id=#{id} AND del_flag='0' AND (#{openOnly}=false OR status!='CLOSED')")
-  long supplierOrders(@Param("id") Long id, @Param("openOnly") boolean openOnly);
+      "SELECT (SELECT COUNT(*) FROM purchase_order WHERE supplier_id=#{id} AND del_flag='0' AND (#{openOnly}=false OR status!='CLOSED')) + (SELECT COUNT(*) FROM purchase_arrival WHERE supplier_id=#{id} AND del_flag='0' AND (#{openOnly}=false OR status!='VOIDED'))")
+  long supplierPurchaseDocuments(@Param("id") Long id, @Param("openOnly") boolean openOnly);
 
-  /** 查询有效采购主表与明细中的料品引用。 */
+  /** 查询有效订单及到货中的料品引用，来源关闭后仍检查待入库到货。 */
   @Select(
-      "SELECT COUNT(*) FROM purchase_order_line l JOIN purchase_order o ON o.order_id=l.order_id WHERE l.item_id=#{id} AND l.del_flag='0' AND o.del_flag='0' AND (#{openOnly}=false OR o.status!='CLOSED')")
-  long itemOrders(@Param("id") Long id, @Param("openOnly") boolean openOnly);
+      "SELECT (SELECT COUNT(*) FROM purchase_order_line l JOIN purchase_order o ON o.order_id=l.order_id WHERE l.item_id=#{id} AND l.del_flag='0' AND o.del_flag='0' AND (#{openOnly}=false OR o.status!='CLOSED')) + (SELECT COUNT(*) FROM purchase_arrival_line l JOIN purchase_arrival a ON a.arrival_id=l.arrival_id WHERE l.item_id=#{id} AND l.del_flag='0' AND a.del_flag='0' AND (#{openOnly}=false OR a.status!='VOIDED'))")
+  long itemPurchaseDocuments(@Param("id") Long id, @Param("openOnly") boolean openOnly);
 
-  /** 单位即使不再被当前档案引用，也不能删除历史订单引用。 */
+  /** 单位即使不再被当前档案引用，也不能删除历史采购单据引用。 */
   @Select(
-      "SELECT COUNT(*) FROM purchase_order_line l JOIN purchase_order o ON o.order_id=l.order_id WHERE l.unit_id=#{id} AND l.del_flag='0' AND o.del_flag='0' AND (#{openOnly}=false OR o.status!='CLOSED')")
-  long unitOrders(@Param("id") Long id, @Param("openOnly") boolean openOnly);
+      "SELECT (SELECT COUNT(*) FROM purchase_order_line l JOIN purchase_order o ON o.order_id=l.order_id WHERE l.unit_id=#{id} AND l.del_flag='0' AND o.del_flag='0' AND (#{openOnly}=false OR o.status!='CLOSED')) + (SELECT COUNT(*) FROM purchase_arrival_line l JOIN purchase_arrival a ON a.arrival_id=l.arrival_id WHERE l.unit_id=#{id} AND l.del_flag='0' AND a.del_flag='0' AND (#{openOnly}=false OR a.status!='VOIDED'))")
+  long unitPurchaseDocuments(@Param("id") Long id, @Param("openOnly") boolean openOnly);
+
+  /** 已审核尚待入库的到货单仍占用仓库，作废单保留历史删除约束。 */
+  @Select(
+      "SELECT COUNT(*) FROM purchase_arrival WHERE warehouse_id=#{id} AND del_flag='0' AND (#{openOnly}=false OR status!='VOIDED')")
+  long warehouseArrivals(@Param("id") Long id, @Param("openOnly") boolean openOnly);
 }

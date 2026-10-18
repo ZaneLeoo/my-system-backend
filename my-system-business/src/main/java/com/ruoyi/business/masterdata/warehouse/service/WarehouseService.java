@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import com.ruoyi.business.masterdata.common.mapper.MasterDataReferenceMapper;
 import com.ruoyi.business.masterdata.location.domain.Location;
 import com.ruoyi.business.masterdata.location.mapper.LocationMapper;
 import com.ruoyi.business.masterdata.warehouse.domain.Warehouse;
@@ -27,12 +28,18 @@ public class WarehouseService {
   private final WarehouseMapper mapper;
   private final LocationMapper locations;
   private final Validator validator;
+  private final MasterDataReferenceMapper references;
 
   /** 注入仓库、货位访问及参数校验组件。 */
-  public WarehouseService(WarehouseMapper mapper, LocationMapper locations, Validator validator) {
+  public WarehouseService(
+      WarehouseMapper mapper,
+      LocationMapper locations,
+      Validator validator,
+      MasterDataReferenceMapper references) {
     this.mapper = mapper;
     this.locations = locations;
     this.validator = validator;
+    this.references = references;
   }
 
   /** 全量条件的服务端分页，在转换响应前保留总数并清理分页上下文。 */
@@ -102,6 +109,9 @@ public class WarehouseService {
     validate(request);
     Warehouse warehouse = lock(request.getWarehouseId());
     version(warehouse.getVersion(), request.getVersion());
+    if (request.getStatus() == EnableStatus.DISABLED
+        && references.warehouseArrivals(warehouse.getWarehouseId(), true) > 0)
+      throw new ServiceException("仓库存在未作废的采购到货单，不能停用");
     if (!Boolean.TRUE.equals(request.getLocationEnabled())
         && countLocations(warehouse.getWarehouseId()) > 0)
       throw new ServiceException("仓库存在未删除货位，不能关闭货位管理");
@@ -127,6 +137,7 @@ public class WarehouseService {
     Warehouse warehouse = lock(id);
     version(warehouse.getVersion(), version);
     if (countLocations(id) > 0) throw new ServiceException("仓库存在未删除货位，不能删除");
+    if (references.warehouseArrivals(id, false) > 0) throw new ServiceException("仓库存在采购到货单引用，不能删除");
     if (mapper.deleteById(warehouse) != 1) throw stale();
   }
 

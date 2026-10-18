@@ -91,12 +91,12 @@ public class ItemServiceImpl implements ItemService {
     validateReferences(request, previous);
     Item item = lockItem(request.getItemId(), request.getVersion());
     if (!Objects.equals(item.getBaseUnitId(), request.getBaseUnitId())
-        && references.itemOrders(item.getItemId(), false) > 0)
-      throw new ServiceException("存在采购订单引用，不能修改料品库存单位");
+        && references.itemPurchaseDocuments(item.getItemId(), false) > 0)
+      throw new ServiceException("存在采购单据引用，不能修改料品库存单位");
     if ((request.getStatus() == EnableStatus.DISABLED
             || !Boolean.TRUE.equals(request.getPurchaseEnabled()))
-        && references.itemOrders(item.getItemId(), true) > 0)
-      throw new ServiceException("存在未关闭采购订单，不能停用料品或关闭采购开关");
+        && references.itemPurchaseDocuments(item.getItemId(), true) > 0)
+      throw new ServiceException("存在未完成采购单据，不能停用料品或关闭采购开关");
     checkCode(request.getItemCode(), item.getItemId());
     if (item.getVersion() == Integer.MAX_VALUE) throw new ServiceException("料品版本已达上限");
     copy(request, item);
@@ -119,7 +119,8 @@ public class ItemServiceImpl implements ItemService {
   public void delete(Long id, Integer version) {
     lockTree();
     Item item = lockItem(id, version);
-    if (references.itemOrders(id, false) > 0) throw new ServiceException("存在采购订单引用，不能删除料品");
+    if (references.itemPurchaseDocuments(id, false) > 0)
+      throw new ServiceException("存在采购单据引用，不能删除料品");
     if (mapper.deleteById(item) != 1) throw stale();
   }
 

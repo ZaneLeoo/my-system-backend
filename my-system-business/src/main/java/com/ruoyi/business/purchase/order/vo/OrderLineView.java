@@ -81,6 +81,48 @@ public class OrderLineView {
   /** 修改时间。 */
   private LocalDateTime updateTime;
 
+  /** 待审核到货数量，由到货事务维护。 */
+  @JsonFormat(shape = JsonFormat.Shape.STRING)
+  private BigDecimal pendingArrivalQuantity;
+
+  /** 已确认到货数量，由到货事务维护。 */
+  @JsonFormat(shape = JsonFormat.Shape.STRING)
+  private BigDecimal arrivedQuantity;
+
+  /** 当前可新增到货数量。 */
+  @JsonFormat(shape = JsonFormat.Shape.STRING)
+  private BigDecimal availableQuantity;
+
+  /** 返回待审核到货数量。 */
+  public BigDecimal getPendingArrivalQuantity() {
+    return pendingArrivalQuantity;
+  }
+
+  /** 设置待审核到货数量。 */
+  public void setPendingArrivalQuantity(BigDecimal value) {
+    this.pendingArrivalQuantity = value;
+  }
+
+  /** 返回已确认到货数量。 */
+  public BigDecimal getArrivedQuantity() {
+    return arrivedQuantity;
+  }
+
+  /** 设置已确认到货数量。 */
+  public void setArrivedQuantity(BigDecimal value) {
+    this.arrivedQuantity = value;
+  }
+
+  /** 返回当前可新增到货数量。 */
+  public BigDecimal getAvailableQuantity() {
+    return availableQuantity;
+  }
+
+  /** 设置当前可新增到货数量。 */
+  public void setAvailableQuantity(BigDecimal value) {
+    this.availableQuantity = value;
+  }
+
   /** 返回明细行 ID。 */
   public Long getLineId() {
     return lineId;
@@ -326,6 +368,13 @@ public class OrderLineView {
     result.setCreateTime(entity.getCreateTime());
     result.setUpdateBy(entity.getUpdateBy());
     result.setUpdateTime(entity.getUpdateTime());
+    result.setPendingArrivalQuantity(entity.getPendingArrivalQuantity());
+    result.setArrivedQuantity(entity.getArrivedQuantity());
+    result.setAvailableQuantity(
+        entity
+            .getQuantity()
+            .subtract(entity.getPendingArrivalQuantity())
+            .subtract(entity.getArrivedQuantity()));
     return result;
   }
 }
