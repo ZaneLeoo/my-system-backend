@@ -98,6 +98,23 @@ public class ItemReadSupport {
     }
   }
 
+  /** 公共查询先分页，再补齐分类路径，避免分页污染辅助查询。 */
+  public PageResult<ItemView> search(
+      com.ruoyi.query.engine.CompiledQuery compiled,
+      com.ruoyi.query.protocol.SearchRequest request) {
+    Map<Long, ItemCategory> tree = categoryIndex();
+    try {
+      PageHelper.startPage(request.getPageNum(), request.getPageSize()).setReasonable(false);
+      List<ItemView> rows = mapper.selectSearchViews(compiled.wrapper());
+      long total = new PageInfo<>(rows).getTotal();
+      PageHelper.clearPage();
+      rows.forEach(row -> row.setCategoryPath(categoryPath(row.getCategoryId(), tree)));
+      return new PageResult<>(rows, total);
+    } finally {
+      PageHelper.clearPage();
+    }
+  }
+
   /** 查询未删除详情，并补齐分类路径。 */
   public ItemView detail(Long id) {
     List<ItemView> found = mapper.selectViews(visibleQuery().eq("i.item_id", id));

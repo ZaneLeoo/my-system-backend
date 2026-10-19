@@ -16,6 +16,12 @@ public interface ItemMapper extends BaseMapper<Item> {
       "SELECT i.item_id AS itemId, i.item_code AS itemCode, i.item_name AS itemName, i.specification AS specification, i.category_id AS categoryId, i.base_unit_id AS baseUnitId, i.purchase_unit_id AS purchaseUnitId, i.sales_unit_id AS salesUnitId, i.purchase_enabled AS purchaseEnabled, i.default_tax_rate AS defaultTaxRate, i.status AS status, i.remark AS remark, i.version AS version, i.create_by AS createBy, i.create_time AS createTime, i.update_by AS updateBy, i.update_time AS updateTime, c.category_name AS categoryName, b.unit_name AS baseUnitName, p.unit_name AS purchaseUnitName, s.unit_name AS salesUnitName FROM md_item i LEFT JOIN md_item_category c ON c.category_id=i.category_id AND c.del_flag='0' LEFT JOIN md_unit b ON b.unit_id=i.base_unit_id AND b.del_flag='0' LEFT JOIN md_unit p ON p.unit_id=i.purchase_unit_id AND p.del_flag='0' LEFT JOIN md_unit s ON s.unit_id=i.sales_unit_id AND s.del_flag='0'  ${ew.customSqlSegment}")
   List<ItemView> selectViews(@Param(Constants.WRAPPER) Wrapper<Item> wrapper);
 
+  /** 公共查询使用同一返回投影，并为列表和 count 设置超时。 */
+  @Select(
+      "SELECT i.item_id AS itemId, i.item_code AS itemCode, i.item_name AS itemName, i.specification AS specification, i.category_id AS categoryId, i.base_unit_id AS baseUnitId, i.purchase_unit_id AS purchaseUnitId, i.sales_unit_id AS salesUnitId, i.purchase_enabled AS purchaseEnabled, i.default_tax_rate AS defaultTaxRate, i.status AS status, i.remark AS remark, i.version AS version, i.create_by AS createBy, i.create_time AS createTime, i.update_by AS updateBy, i.update_time AS updateTime, c.category_name AS categoryName, b.unit_name AS baseUnitName, p.unit_name AS purchaseUnitName, s.unit_name AS salesUnitName FROM md_item i LEFT JOIN md_item_category c ON c.category_id=i.category_id AND c.del_flag='0' LEFT JOIN md_unit b ON b.unit_id=i.base_unit_id AND b.del_flag='0' LEFT JOIN md_unit p ON p.unit_id=i.purchase_unit_id AND p.del_flag='0' LEFT JOIN md_unit s ON s.unit_id=i.sales_unit_id AND s.del_flag='0'  ${ew.customSqlSegment}")
+  @org.apache.ibatis.annotations.Options(timeout = 3)
+  List<ItemView> selectSearchViews(@Param(Constants.WRAPPER) Wrapper<Item> wrapper);
+
   /** 包括已删除记录的编码占用校验。 */
   @Select(
       "SELECT COUNT(*) FROM md_item WHERE item_code=#{code} AND (#{excludedId} IS NULL OR item_id!=#{excludedId})")

@@ -126,6 +126,30 @@ public class OrderService {
     }
   }
 
+  /** 按查询结果顺序补齐订单和执行进度；只读取当前页，不逐行发起关联查询。 */
+  public List<OrderView> queryViews(List<Long> ids) {
+    if (ids.isEmpty()) return List.of();
+    Map<Long, PurchaseOrder> found =
+        orders.selectByIds(ids).stream()
+            .collect(Collectors.toMap(PurchaseOrder::getOrderId, Function.identity()));
+    Map<Long, OrderExecutionProgress> progress =
+        orders.executionProgress(ids).stream()
+            .collect(Collectors.toMap(OrderExecutionProgress::getOrderId, Function.identity()));
+    return ids.stream()
+        .filter(found::containsKey)
+        .map(
+            id -> {
+              OrderView view = OrderView.from(found.get(id));
+              var execution = progress.get(id);
+              if (execution != null) {
+                view.setArrivalProgress(execution.getArrivalProgress());
+                view.setReceiptProgress(execution.getReceiptProgress());
+              }
+              return view;
+            })
+        .toList();
+  }
+
   /** 同一只读事务返回主表与有序明细，避免读到不同提交版本。 */
   @Transactional(readOnly = true)
   public OrderView detail(Long id) {
