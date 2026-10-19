@@ -2,9 +2,11 @@ package com.ruoyi.query.web;
 
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.domain.R;
+import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.query.definition.DefinitionService;
 import com.ruoyi.query.metadata.*;
+import jakarta.validation.Valid;
 import java.util.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -22,18 +24,18 @@ public class MetadataController {
     this.definitions = definitions;
   }
 
-  /** 查看已导入目录。 */
+  /** 按中文名称或数据库表名筛选已导入目录并分页。 */
   @GetMapping("/tables")
   @PreAuthorize("@ss.hasPermi('query:metadata:list')")
-  public R<?> list() {
-    return R.ok(service.list());
+  public R<PageResult<MetadataTableView>> list(@Valid MetadataTableQuery query) {
+    return R.ok(service.page(query));
   }
 
   /** 返回目录表对应的已登记查询配置，仅供同时具备两项管理权限的用户查看。 */
   @GetMapping("/definition-links")
   @PreAuthorize("@ss.hasPermi('query:metadata:list') and @ss.hasPermi('query:definition:list')")
-  public R<?> definitionLinks() {
-    return R.ok(definitions.tableLinks());
+  public R<?> definitionLinks(@RequestParam(required = false) List<Long> tableIds) {
+    return R.ok(definitions.tableLinks(tableIds));
   }
 
   /** 查看可导入实际表。 */

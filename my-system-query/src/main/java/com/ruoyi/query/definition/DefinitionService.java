@@ -45,8 +45,16 @@ public class DefinitionService {
 
   /** 返回数据目录与已接入查询对象的关联，包含预设明细来源。 */
   public List<Map<String, Object>> tableLinks() {
+    return tableLinks(null);
+  }
+
+  /** 按当前目录页限制关联结果，旧调用未传 ID 时保留完整目录行为。 */
+  public List<Map<String, Object>> tableLinks(List<Long> ids) {
+    if (ids != null && (ids.size() > 100 || ids.stream().anyMatch(id -> id == null || id <= 0)))
+      throw new ServiceException("目录 ID 每次最多 100 个且必须为正整数", 400);
     Map<String, Long> tableIds = new HashMap<>();
-    metadata.list().forEach(table -> tableIds.put(table.getTableName(), table.getTableId()));
+    var tables = ids == null ? metadata.list() : metadata.findByIds(ids);
+    tables.forEach(table -> tableIds.put(table.getTableName(), table.getTableId()));
     List<Map<String, Object>> links = new ArrayList<>();
     for (var definition : list()) {
       var adapter = registry.require(definition.getAdapterKey());

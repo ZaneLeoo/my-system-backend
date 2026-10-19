@@ -25,8 +25,8 @@ public class QueryRegistry {
     return a;
   }
 
-  /** 返回当前应用允许导入的表。 */
-  public Set<String> tables() {
+  /** 返回查询适配器已接入的来源表，不作为数据目录导入白名单。 */
+  public Set<String> sourceTables() {
     Set<String> names = new TreeSet<>();
     adapters.values().forEach(a -> a.sources().values().forEach(s -> names.add(s.getTable())));
     return names;

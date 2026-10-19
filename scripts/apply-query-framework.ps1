@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-foreach ($migration in @('20261019_01_query_framework.sql', '20261019_02_query_navigation.sql')) {
+foreach ($migration in @('20261019_01_query_framework.sql', '20261019_02_query_navigation.sql', '20261019_03_business_metadata.sql')) {
   $migrationPath = Join-Path $root "sql/migrations/$migration"
   docker cp $migrationPath 'my-system-mysql:/tmp/my-system-query-framework.sql'
   if ($LASTEXITCODE -ne 0) { throw "Failed to copy $migration." }

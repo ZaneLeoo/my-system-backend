@@ -62,6 +62,12 @@ class QueryPublicationTest {
     assertTrue(links.stream().anyMatch(link -> link.get("tableId").equals(11L)));
     assertTrue(links.stream().anyMatch(link -> link.get("tableId").equals(12L)));
     assertTrue(links.stream().allMatch(link -> link.get("definitionId").equals(7L)));
+    when(metadata.findByIds(List.of(12L))).thenReturn(List.of(lines));
+    var pageLinks = service.tableLinks(List.of(12L));
+    assertEquals(1, pageLinks.size());
+    assertEquals(12L, pageLinks.get(0).get("tableId"));
+    assertThrows(ServiceException.class, () -> service.tableLinks(List.of(0L)));
+    assertThrows(ServiceException.class, () -> service.tableLinks(Collections.nCopies(101, 11L)));
   }
 
   /** 准备固定后端能力和单个已发布字段。 */

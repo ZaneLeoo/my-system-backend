@@ -1,6 +1,9 @@
 package com.ruoyi.query.metadata;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
+import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.query.mapper.*;
 import com.ruoyi.query.spi.QueryRegistry;
@@ -18,34 +21,88 @@ public class MetadataService {
   private final JdbcTemplate jdbc;
   private final MetadataTableMapper tables;
   private final MetadataColumnMapper columns;
-  private final QueryRegistry registry;
+  private final MetadataRegistry registry;
+  private final QueryRegistry queries;
 
   /** 注入目录和只读结构访问。 */
   public MetadataService(
       JdbcTemplate jdbc,
       MetadataTableMapper tables,
       MetadataColumnMapper columns,
-      QueryRegistry registry) {
+      MetadataRegistry registry,
+      QueryRegistry queries) {
     this.jdbc = jdbc;
     this.tables = tables;
     this.columns = columns;
     this.registry = registry;
+    this.queries = queries;
   }
 
   /** 列出代码允许导入的实际业务表。 */
   public List<Map<String, Object>> candidates() {
-    List<Map<String, Object>> result = new ArrayList<>();
-    for (String name : registry.tables())
-      result.addAll(
-          jdbc.queryForList(
-              "SELECT TABLE_NAME AS tableName,TABLE_COMMENT AS tableComment FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE' AND TABLE_NAME=?",
-              name));
+    var result = physicalTables(registry.tables());
+    if (result.isEmpty()) return result;
+    String schema = jdbc.queryForObject("SELECT DATABASE()", String.class);
+    Set<String> imported = new HashSet<>();
+    tables
+        .selectList(
+            new QueryWrapper<MetadataTable>()
+                .eq("schema_name", schema)
+                .in("table_name", registry.tables()))
+        .forEach(table -> imported.add(table.getTableName()));
+    for (var table : result) {
+      String name = Objects.toString(table.get("tableName"));
+      table.put("displayName", registry.displayName(name));
+      table.put("imported", imported.contains(name));
+    }
     return result;
   }
 
   /** 返回已导入目录。 */
   public List<MetadataTable> list() {
     return tables.selectList(new QueryWrapper<MetadataTable>().orderByAsc("table_name"));
+  }
+
+  /** 对全部目录执行关键字筛选及数据库分页，始终清理分页线程状态。 */
+  public PageResult<MetadataTableView> page(MetadataTableQuery query) {
+    if (query.getPageNum() == null
+        || query.getPageNum() < 1
+        || query.getPageSize() == null
+        || query.getPageSize() < 1
+        || query.getPageSize() > 100) {
+      throw new ServiceException("分页参数无效，每页允许 1～100 条", 400);
+    }
+    var wrapper = new QueryWrapper<MetadataTable>();
+    if (query.getKeyword() != null) {
+      String pattern =
+          "%" + query.getKeyword().replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
+      wrapper.and(
+          condition ->
+              condition
+                  .apply("display_name LIKE {0} ESCAPE '!'", pattern)
+                  .or()
+                  .apply("table_name LIKE {0} ESCAPE '!'", pattern));
+    }
+    wrapper.orderByAsc("table_name", "table_id");
+    try {
+      PageHelper.startPage(query.getPageNum(), query.getPageSize()).setReasonable(false);
+      List<MetadataTable> rows = tables.selectList(wrapper);
+      long total = new PageInfo<>(rows).getTotal();
+      Set<String> connected = queries.sourceTables();
+      return new PageResult<>(
+          rows.stream()
+              .map(table -> MetadataTableView.from(table, connected.contains(table.getTableName())))
+              .toList(),
+          total);
+    } finally {
+      PageHelper.clearPage();
+    }
+  }
+
+  /** 只读取当前页面所需目录，避免分页后仍加载完整目录关联。 */
+  public List<MetadataTable> findByIds(List<Long> ids) {
+    if (ids.isEmpty()) return List.of();
+    return tables.selectList(new QueryWrapper<MetadataTable>().in("table_id", ids));
   }
 
   /** 查找有效目录。 */
@@ -72,18 +129,14 @@ public class MetadataService {
             new QueryWrapper<MetadataTable>().eq("schema_name", schema).eq("table_name", name));
     if (found != null) return found;
     var available =
-        candidates().stream()
-            .filter(t -> name.equals(t.get("tableName")))
+        physicalTables(Set.of(name)).stream()
             .findFirst()
             .orElseThrow(() -> new ServiceException("业务表不存在"));
     var t = new MetadataTable();
     t.setSchemaName(schema);
     t.setTableName(name);
     t.setTableComment(Objects.toString(available.get("tableComment"), ""));
-    t.setDisplayName(
-        t.getTableComment().isBlank()
-            ? name
-            : t.getTableComment().substring(0, Math.min(100, t.getTableComment().length())));
+    t.setDisplayName(registry.displayName(name));
     t.setAvailable(true);
     t.setVersion(0);
     t.setSynchronizedTime(
@@ -190,6 +243,16 @@ public class MetadataService {
     }
     t.setVersion(Math.incrementExact(t.getVersion()));
     tables.updateById(t);
+  }
+
+  /** 批量读取已登记且实际存在的业务表，表名均作为绑定参数。 */
+  private List<Map<String, Object>> physicalTables(Set<String> names) {
+    if (names.isEmpty()) return List.of();
+    return jdbc.queryForList(
+        "SELECT TABLE_NAME AS tableName,TABLE_COMMENT AS tableComment FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE' AND TABLE_NAME IN ("
+            + String.join(",", Collections.nCopies(names.size(), "?"))
+            + ") ORDER BY TABLE_NAME",
+        names.toArray());
   }
 
   /** 一次读取字段结构；表名也是绑定值。 */
