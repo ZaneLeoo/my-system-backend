@@ -47,6 +47,12 @@ public class SysRoleController extends BaseController {
 
   @Autowired private ISysDeptService deptService;
 
+  /**
+   * 按筛选条件分页查询角色。
+   *
+   * @param role 角色筛选条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('system:role:list')")
   @GetMapping("/list")
   public TableDataInfo list(SysRole role) {
@@ -55,6 +61,12 @@ public class SysRoleController extends BaseController {
     return getDataTable(list);
   }
 
+  /**
+   * 按筛选条件导出角色。
+   *
+   * @param response 用于写入下载文件或响应内容的 HTTP 响应
+   * @param role 角色筛选条件
+   */
   @Log(title = "角色管理", businessType = BusinessType.EXPORT)
   @PreAuthorize("@ss.hasPermi('system:role:export')")
   @PostMapping("/export")
@@ -64,7 +76,12 @@ public class SysRoleController extends BaseController {
     util.exportExcel(response, list, "角色数据");
   }
 
-  /** 根据角色编号获取详细信息 */
+  /**
+   * 根据角色编号获取详细信息
+   *
+   * @param roleId 角色 ID
+   * @return 匹配的记录详情
+   */
   @PreAuthorize("@ss.hasPermi('system:role:query')")
   @GetMapping(value = "/{roleId}")
   public AjaxResult getInfo(@PathVariable Long roleId) {
@@ -72,7 +89,12 @@ public class SysRoleController extends BaseController {
     return success(roleService.selectRoleById(roleId));
   }
 
-  /** 新增角色 */
+  /**
+   * 新增角色
+   *
+   * @param role 待新增的角色信息
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:role:add')")
   @Log(title = "角色管理", businessType = BusinessType.INSERT)
   @PostMapping
@@ -86,7 +108,12 @@ public class SysRoleController extends BaseController {
     return toAjax(roleService.insertRole(role));
   }
 
-  /** 修改保存角色 */
+  /**
+   * 修改保存角色
+   *
+   * @param role 待修改的角色信息及其标识
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:role:edit')")
   @Log(title = "角色管理", businessType = BusinessType.UPDATE)
   @PutMapping
@@ -108,7 +135,12 @@ public class SysRoleController extends BaseController {
     return error("修改角色'" + role.getRoleName() + "'失败，请联系管理员");
   }
 
-  /** 修改保存数据权限 */
+  /**
+   * 修改保存数据权限
+   *
+   * @param role 角色 ID、数据范围及关联部门授权设置
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:role:edit')")
   @Log(title = "角色管理", businessType = BusinessType.UPDATE)
   @PutMapping("/dataScope")
@@ -118,7 +150,12 @@ public class SysRoleController extends BaseController {
     return toAjax(roleService.authDataScope(role));
   }
 
-  /** 状态修改 */
+  /**
+   * 状态修改
+   *
+   * @param role 角色 ID 及目标启停状态
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:role:edit')")
   @Log(title = "角色管理", businessType = BusinessType.UPDATE)
   @PutMapping("/changeStatus")
@@ -129,7 +166,12 @@ public class SysRoleController extends BaseController {
     return toAjax(roleService.updateRoleStatus(role));
   }
 
-  /** 删除角色 */
+  /**
+   * 删除角色
+   *
+   * @param roleIds 角色 ID 集合
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:role:remove')")
   @Log(title = "角色管理", businessType = BusinessType.DELETE)
   @DeleteMapping("/{roleIds}")
@@ -137,14 +179,23 @@ public class SysRoleController extends BaseController {
     return toAjax(roleService.deleteRoleByIds(roleIds));
   }
 
-  /** 获取角色选择框列表 */
+  /**
+   * 获取角色选择框列表
+   *
+   * @return 操作结果或选项列表
+   */
   @PreAuthorize("@ss.hasPermi('system:role:query')")
   @GetMapping("/optionselect")
   public AjaxResult optionselect() {
     return success(roleService.selectRoleAll());
   }
 
-  /** 查询已分配用户角色列表 */
+  /**
+   * 查询已分配用户角色列表
+   *
+   * @param user 用户筛选条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('system:role:list')")
   @GetMapping("/authUser/allocatedList")
   public TableDataInfo allocatedList(SysUser user) {
@@ -153,7 +204,12 @@ public class SysRoleController extends BaseController {
     return getDataTable(list);
   }
 
-  /** 查询未分配用户角色列表 */
+  /**
+   * 查询未分配用户角色列表
+   *
+   * @param user 用户筛选条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('system:role:list')")
   @GetMapping("/authUser/unallocatedList")
   public TableDataInfo unallocatedList(SysUser user) {
@@ -162,7 +218,12 @@ public class SysRoleController extends BaseController {
     return getDataTable(list);
   }
 
-  /** 取消授权用户 */
+  /**
+   * 取消授权用户
+   *
+   * @param userRole 用户 ID 与角色 ID 的授权关系
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:role:edit')")
   @Log(title = "角色管理", businessType = BusinessType.GRANT)
   @PutMapping("/authUser/cancel")
@@ -170,7 +231,13 @@ public class SysRoleController extends BaseController {
     return toAjax(roleService.deleteAuthUser(userRole));
   }
 
-  /** 批量取消授权用户 */
+  /**
+   * 批量取消授权用户
+   *
+   * @param roleId 角色 ID
+   * @param userIds 用户 ID 集合
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:role:edit')")
   @Log(title = "角色管理", businessType = BusinessType.GRANT)
   @PutMapping("/authUser/cancelAll")
@@ -178,7 +245,13 @@ public class SysRoleController extends BaseController {
     return toAjax(roleService.deleteAuthUsers(roleId, userIds));
   }
 
-  /** 批量选择用户授权 */
+  /**
+   * 批量选择用户授权
+   *
+   * @param roleId 角色 ID
+   * @param userIds 用户 ID 集合
+   * @return 操作结果或选项列表
+   */
   @PreAuthorize("@ss.hasPermi('system:role:edit')")
   @Log(title = "角色管理", businessType = BusinessType.GRANT)
   @PutMapping("/authUser/selectAll")
@@ -187,7 +260,12 @@ public class SysRoleController extends BaseController {
     return toAjax(roleService.insertAuthUsers(roleId, userIds));
   }
 
-  /** 获取对应角色部门树列表 */
+  /**
+   * 获取对应角色部门树列表
+   *
+   * @param roleId 角色 ID
+   * @return 角色可选部门树及已授权部门 ID
+   */
   @PreAuthorize("@ss.hasPermi('system:role:query')")
   @GetMapping(value = "/deptTree/{roleId}")
   public AjaxResult deptTree(@PathVariable("roleId") Long roleId) {

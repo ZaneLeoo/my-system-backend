@@ -37,6 +37,12 @@ public class SysDictDataController extends BaseController {
 
   @Autowired private ISysDictTypeService dictTypeService;
 
+  /**
+   * 按筛选条件分页查询字典数据。
+   *
+   * @param dictData 字典数据筛选条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('system:dict:list')")
   @GetMapping("/list")
   public TableDataInfo list(SysDictData dictData) {
@@ -45,6 +51,12 @@ public class SysDictDataController extends BaseController {
     return getDataTable(list);
   }
 
+  /**
+   * 按筛选条件导出字典数据。
+   *
+   * @param response 用于写入下载文件或响应内容的 HTTP 响应
+   * @param dictData 字典数据筛选条件
+   */
   @Log(title = "字典数据", businessType = BusinessType.EXPORT)
   @PreAuthorize("@ss.hasPermi('system:dict:export')")
   @PostMapping("/export")
@@ -54,14 +66,24 @@ public class SysDictDataController extends BaseController {
     util.exportExcel(response, list, "字典数据");
   }
 
-  /** 查询字典数据详细 */
+  /**
+   * 查询字典数据详细
+   *
+   * @param dictCode 字典数据 ID
+   * @return 匹配的记录详情
+   */
   @PreAuthorize("@ss.hasPermi('system:dict:query')")
   @GetMapping(value = "/{dictCode}")
   public AjaxResult getInfo(@PathVariable Long dictCode) {
     return success(dictDataService.selectDictDataById(dictCode));
   }
 
-  /** 根据字典类型查询字典数据信息 */
+  /**
+   * 根据字典类型查询字典数据信息
+   *
+   * @param dictType 字典类型或筛选条件
+   * @return 匹配的配置值或字典选项
+   */
   @GetMapping(value = "/type/{dictType}")
   public AjaxResult dictType(@PathVariable String dictType) {
     List<SysDictData> data = dictTypeService.selectDictDataByType(dictType);
@@ -71,7 +93,12 @@ public class SysDictDataController extends BaseController {
     return success(data);
   }
 
-  /** 新增字典类型 */
+  /**
+   * 新增字典类型
+   *
+   * @param dict 待新增的字典信息
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:dict:add')")
   @Log(title = "字典数据", businessType = BusinessType.INSERT)
   @PostMapping
@@ -80,7 +107,12 @@ public class SysDictDataController extends BaseController {
     return toAjax(dictDataService.insertDictData(dict));
   }
 
-  /** 修改保存字典类型 */
+  /**
+   * 修改保存字典类型
+   *
+   * @param dict 待修改的字典信息及其标识
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:dict:edit')")
   @Log(title = "字典数据", businessType = BusinessType.UPDATE)
   @PutMapping
@@ -89,7 +121,12 @@ public class SysDictDataController extends BaseController {
     return toAjax(dictDataService.updateDictData(dict));
   }
 
-  /** 删除字典类型 */
+  /**
+   * 删除字典类型
+   *
+   * @param dictCodes 字典数据 ID 集合
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:dict:remove')")
   @Log(title = "字典类型", businessType = BusinessType.DELETE)
   @DeleteMapping("/{dictCodes}")

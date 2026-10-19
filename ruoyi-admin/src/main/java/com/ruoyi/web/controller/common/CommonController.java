@@ -39,6 +39,8 @@ public class CommonController {
    *
    * @param fileName 文件名称
    * @param delete 是否删除
+   * @param response 用于写入下载文件或响应内容的 HTTP 响应
+   * @param request 当前文件下载请求
    */
   @GetMapping("/download")
   public void fileDownload(
@@ -62,7 +64,13 @@ public class CommonController {
     }
   }
 
-  /** 通用上传请求（单个） */
+  /**
+   * 通用上传请求（单个）
+   *
+   * @param file 客户端上传的文件
+   * @return 上传文件的访问地址、保存名称和原始名称
+   * @throws Exception 执行接口操作失败时
+   */
   @PostMapping("/upload")
   public AjaxResult uploadFile(MultipartFile file) throws Exception {
     try {
@@ -82,7 +90,13 @@ public class CommonController {
     }
   }
 
-  /** 通用上传请求（多个） */
+  /**
+   * 通用上传请求（多个）
+   *
+   * @param files 客户端上传的文件集合
+   * @return 各上传文件的访问地址、保存名称和原始名称
+   * @throws Exception 执行接口操作失败时
+   */
   @PostMapping("/uploads")
   public AjaxResult uploadFiles(List<MultipartFile> files) throws Exception {
     try {
@@ -112,7 +126,14 @@ public class CommonController {
     }
   }
 
-  /** 本地资源通用下载 */
+  /**
+   * 本地资源通用下载
+   *
+   * @param resource 相对于资源目录的文件路径
+   * @param request 当前文件下载请求
+   * @param response 用于写入下载文件或响应内容的 HTTP 响应
+   * @throws Exception 执行接口操作失败时
+   */
   @GetMapping("/download/resource")
   public void resourceDownload(
       String resource, HttpServletRequest request, HttpServletResponse response) throws Exception {

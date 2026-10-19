@@ -39,7 +39,16 @@ public class QueryRuntimeService {
     this.compiler = compiler;
   }
 
-  /** 返回当前版本，同时检测已同步的字段失效和类型变化。 */
+  /**
+   * 按业务查询编码读取当前发布快照，并复核访问权限和已同步的字段目录。
+   *
+   * <p>发布内容按编码与版本缓存，但每次调用仍读取当前发布指针及字段有效性；不在此处扫描真实数据库结构。
+   *
+   * @param key 注册适配器和查询定义使用的稳定业务编码
+   * @return 当前有效发布版本的完整配置快照，仅用于后端运行时
+   * @throws ServiceException 配置未初始化、未发布、已停用或引用字段失效时
+   * @throws org.springframework.security.access.AccessDeniedException 当前用户没有业务列表权限时
+   */
   public QuerySnapshot published(String key) {
     registry.authorized(key);
     QueryDefinition d = definitions.byKey(key);
@@ -120,7 +129,18 @@ public class QueryRuntimeService {
         snapshot.getRelations());
   }
 
-  /** 业务入口再次验证发布版本，不允许旧配置静默扩大结果。 */
+  /**
+   * 校验发布版本后执行受控业务分页查询，并检查返回行类型。
+   *
+   * @param <T> 业务列表 VO 类型
+   * @param key 已登记的业务查询编码
+   * @param request 分页、配置版本、白名单排序及条件树，不能为 null
+   * @param type 业务入口声明的行类型，必须与适配器返回投影一致
+   * @return 当前页业务行及全部匹配记录的总数
+   * @throws ServiceException 请求无效、配置版本过期、条件不合法或查询执行失败时
+   * @throws org.springframework.security.access.AccessDeniedException 当前用户没有业务列表权限时
+   * @throws ClassCastException 适配器返回的行不符合业务入口声明的类型时
+   */
   public <T> PageResult<T> search(String key, SearchRequest request, Class<T> type) {
     if (request == null) {
       throw new ServiceException("查询参数不能为空", 400);
@@ -133,7 +153,15 @@ public class QueryRuntimeService {
     return new PageResult<>(result.getRows().stream().map(type::cast).toList(), result.getTotal());
   }
 
-  /** 管理预览使用已保存草稿，仍然要求原业务列表权限。 */
+  /**
+   * 使用已保存草稿执行查询预览，不修改发布记录或当前发布版本。
+   *
+   * @param id 查询定义 ID
+   * @param request 待预览的分页、排序及条件，字段按当前草稿解析
+   * @return 草稿的安全界面元数据及对应业务查询结果
+   * @throws ServiceException 草稿来源、字段、控件、运算符或请求条件不合法时
+   * @throws org.springframework.security.access.AccessDeniedException 当前用户没有业务列表权限时
+   */
   public Map<String, Object> preview(Long id, SearchRequest request) {
     QueryDefinition d = definitions.require(id);
     QueryAdapter adapter = registry.authorized(d.getQueryKey());
@@ -173,7 +201,18 @@ public class QueryRuntimeService {
     }
   }
 
-  /** 选项请求也检查字段已开放和业务列表权限，不依赖维护或参照权限。 */
+  /**
+   * 按当前发布字段及其提供器搜索选项，或批量回显已有查询值。
+   *
+   * @param key 已登记的业务查询编码
+   * @param field 已发布的稳定字段标识
+   * @param keyword 搜索关键字，可为 null，最多 200 个字符
+   * @param ids 1～100 个不同正整数 ID；为 null 时按关键字和页码搜索
+   * @param page 选项页码，范围 1～100000
+   * @return 适配器提供的选项行及总数
+   * @throws ServiceException 字段未开放、提供器未登记或选项请求参数不合法时
+   * @throws org.springframework.security.access.AccessDeniedException 当前用户没有业务列表权限时
+   */
   public Object options(String key, String field, String keyword, List<Long> ids, Integer page) {
     return optionsSnapshot(registry.authorized(key), published(key), field, keyword, ids, page);
   }

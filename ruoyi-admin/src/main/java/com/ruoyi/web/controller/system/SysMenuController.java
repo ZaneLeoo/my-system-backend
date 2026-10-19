@@ -32,7 +32,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class SysMenuController extends BaseController {
   @Autowired private ISysMenuService menuService;
 
-  /** 获取菜单列表 */
+  /**
+   * 获取菜单列表
+   *
+   * @param menu 菜单筛选条件
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:menu:list')")
   @GetMapping("/list")
   public AjaxResult list(SysMenu menu) {
@@ -40,21 +45,36 @@ public class SysMenuController extends BaseController {
     return success(menus);
   }
 
-  /** 根据菜单编号获取详细信息 */
+  /**
+   * 根据菜单编号获取详细信息
+   *
+   * @param menuId 菜单 ID
+   * @return 匹配的记录详情
+   */
   @PreAuthorize("@ss.hasPermi('system:menu:query')")
   @GetMapping(value = "/{menuId}")
   public AjaxResult getInfo(@PathVariable Long menuId) {
     return success(menuService.selectMenuById(menuId));
   }
 
-  /** 获取菜单下拉树列表 */
+  /**
+   * 获取菜单下拉树列表
+   *
+   * @param menu 菜单筛选条件
+   * @return 当前用户可管理的菜单下拉树
+   */
   @GetMapping("/treeselect")
   public AjaxResult treeselect(SysMenu menu) {
     List<SysMenu> menus = menuService.selectMenuList(menu, getUserId());
     return success(menuService.buildMenuTreeSelect(menus));
   }
 
-  /** 加载对应角色菜单列表树 */
+  /**
+   * 加载对应角色菜单列表树
+   *
+   * @param roleId 角色 ID
+   * @return 可选菜单树及角色已授权的菜单 ID
+   */
   @GetMapping(value = "/roleMenuTreeselect/{roleId}")
   public AjaxResult roleMenuTreeselect(@PathVariable("roleId") Long roleId) {
     List<SysMenu> menus = menuService.selectMenuList(getUserId());
@@ -64,7 +84,12 @@ public class SysMenuController extends BaseController {
     return ajax;
   }
 
-  /** 新增菜单 */
+  /**
+   * 新增菜单
+   *
+   * @param menu 待新增的菜单信息
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:menu:add')")
   @Log(title = "菜单管理", businessType = BusinessType.INSERT)
   @PostMapping
@@ -81,7 +106,12 @@ public class SysMenuController extends BaseController {
     return toAjax(menuService.insertMenu(menu));
   }
 
-  /** 修改菜单 */
+  /**
+   * 修改菜单
+   *
+   * @param menu 待修改的菜单信息及其标识
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:menu:edit')")
   @Log(title = "菜单管理", businessType = BusinessType.UPDATE)
   @PutMapping
@@ -100,7 +130,12 @@ public class SysMenuController extends BaseController {
     return toAjax(menuService.updateMenu(menu));
   }
 
-  /** 保存菜单排序 */
+  /**
+   * 保存菜单排序
+   *
+   * @param params 请求中的操作字段，具体键由当前接口约定
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:menu:edit')")
   @Log(title = "保存菜单排序", businessType = BusinessType.UPDATE)
   @PutMapping("/updateSort")
@@ -111,7 +146,12 @@ public class SysMenuController extends BaseController {
     return success();
   }
 
-  /** 删除菜单 */
+  /**
+   * 删除菜单
+   *
+   * @param menuId 菜单 ID
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:menu:remove')")
   @Log(title = "菜单管理", businessType = BusinessType.DELETE)
   @DeleteMapping("/{menuId}")

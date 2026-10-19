@@ -33,7 +33,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class SysDeptController extends BaseController {
   @Autowired private ISysDeptService deptService;
 
-  /** 获取部门列表 */
+  /**
+   * 获取部门列表
+   *
+   * @param dept 部门筛选条件
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:dept:list')")
   @GetMapping("/list")
   public AjaxResult list(SysDept dept) {
@@ -41,7 +46,12 @@ public class SysDeptController extends BaseController {
     return success(depts);
   }
 
-  /** 查询部门列表（排除节点） */
+  /**
+   * 查询部门列表（排除节点）
+   *
+   * @param deptId 部门 ID
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:dept:list')")
   @GetMapping("/list/exclude/{deptId}")
   public AjaxResult excludeChild(@PathVariable(value = "deptId", required = false) Long deptId) {
@@ -53,7 +63,12 @@ public class SysDeptController extends BaseController {
     return success(depts);
   }
 
-  /** 根据部门编号获取详细信息 */
+  /**
+   * 根据部门编号获取详细信息
+   *
+   * @param deptId 部门 ID
+   * @return 匹配的记录详情
+   */
   @PreAuthorize("@ss.hasPermi('system:dept:query')")
   @GetMapping(value = "/{deptId}")
   public AjaxResult getInfo(@PathVariable Long deptId) {
@@ -61,7 +76,12 @@ public class SysDeptController extends BaseController {
     return success(deptService.selectDeptById(deptId));
   }
 
-  /** 新增部门 */
+  /**
+   * 新增部门
+   *
+   * @param dept 待新增的部门信息
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:dept:add')")
   @Log(title = "部门管理", businessType = BusinessType.INSERT)
   @PostMapping
@@ -73,7 +93,12 @@ public class SysDeptController extends BaseController {
     return toAjax(deptService.insertDept(dept));
   }
 
-  /** 修改部门 */
+  /**
+   * 修改部门
+   *
+   * @param dept 待修改的部门信息及其标识
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:dept:edit')")
   @Log(title = "部门管理", businessType = BusinessType.UPDATE)
   @PutMapping
@@ -92,7 +117,12 @@ public class SysDeptController extends BaseController {
     return toAjax(deptService.updateDept(dept));
   }
 
-  /** 保存部门排序 */
+  /**
+   * 保存部门排序
+   *
+   * @param params 请求中的操作字段，具体键由当前接口约定
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:dept:edit')")
   @Log(title = "保存部门排序", businessType = BusinessType.UPDATE)
   @PutMapping("/updateSort")
@@ -103,7 +133,12 @@ public class SysDeptController extends BaseController {
     return success();
   }
 
-  /** 删除部门 */
+  /**
+   * 删除部门
+   *
+   * @param deptId 部门 ID
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:dept:remove')")
   @Log(title = "部门管理", businessType = BusinessType.DELETE)
   @DeleteMapping("/{deptId}")

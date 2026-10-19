@@ -48,7 +48,12 @@ public class SysUserController extends BaseController {
 
   @Autowired private ISysPostService postService;
 
-  /** 获取用户列表 */
+  /**
+   * 获取用户列表
+   *
+   * @param user 用户筛选条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('system:user:list')")
   @GetMapping("/list")
   public TableDataInfo list(SysUser user) {
@@ -57,6 +62,12 @@ public class SysUserController extends BaseController {
     return getDataTable(list);
   }
 
+  /**
+   * 按筛选条件导出用户。
+   *
+   * @param response 用于写入下载文件或响应内容的 HTTP 响应
+   * @param user 用户筛选条件
+   */
   @Log(title = "用户管理", businessType = BusinessType.EXPORT)
   @PreAuthorize("@ss.hasPermi('system:user:export')")
   @PostMapping("/export")
@@ -66,6 +77,14 @@ public class SysUserController extends BaseController {
     util.exportExcel(response, list, "用户数据");
   }
 
+  /**
+   * 导入用户数据，并按请求决定是否更新已有用户。
+   *
+   * @param file 客户端上传的文件
+   * @param updateSupport 是否允许更新已存在的用户
+   * @return 导入处理结果及成功、失败信息
+   * @throws Exception 执行接口操作失败时
+   */
   @Log(title = "用户管理", businessType = BusinessType.IMPORT)
   @PreAuthorize("@ss.hasPermi('system:user:import')")
   @PostMapping("/importData")
@@ -77,13 +96,23 @@ public class SysUserController extends BaseController {
     return success(message);
   }
 
+  /**
+   * 下载用户数据导入模板。
+   *
+   * @param response 用于写入下载文件或响应内容的 HTTP 响应
+   */
   @PostMapping("/importTemplate")
   public void importTemplate(HttpServletResponse response) {
     ExcelUtil<SysUser> util = new ExcelUtil<SysUser>(SysUser.class);
     util.importTemplateExcel(response, "用户数据");
   }
 
-  /** 根据用户编号获取详细信息 */
+  /**
+   * 根据用户编号获取详细信息
+   *
+   * @param userId 用户 ID
+   * @return 匹配的记录详情
+   */
   @PreAuthorize("@ss.hasPermi('system:user:query')")
   @GetMapping(value = {"/", "/{userId}"})
   public AjaxResult getInfo(@PathVariable(value = "userId", required = false) Long userId) {
@@ -107,7 +136,12 @@ public class SysUserController extends BaseController {
     return ajax;
   }
 
-  /** 新增用户 */
+  /**
+   * 新增用户
+   *
+   * @param user 待新增的用户信息
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:user:add')")
   @Log(title = "用户管理", businessType = BusinessType.INSERT)
   @PostMapping
@@ -127,7 +161,12 @@ public class SysUserController extends BaseController {
     return toAjax(userService.insertUser(user));
   }
 
-  /** 修改用户 */
+  /**
+   * 修改用户
+   *
+   * @param user 待修改的用户信息及其标识
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:user:edit')")
   @Log(title = "用户管理", businessType = BusinessType.UPDATE)
   @PutMapping
@@ -148,7 +187,12 @@ public class SysUserController extends BaseController {
     return toAjax(userService.updateUser(user));
   }
 
-  /** 删除用户 */
+  /**
+   * 删除用户
+   *
+   * @param userIds 用户 ID 集合
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:user:remove')")
   @Log(title = "用户管理", businessType = BusinessType.DELETE)
   @DeleteMapping("/{userIds}")
@@ -159,7 +203,12 @@ public class SysUserController extends BaseController {
     return toAjax(userService.deleteUserByIds(userIds));
   }
 
-  /** 重置密码 */
+  /**
+   * 重置密码
+   *
+   * @param user 用户 ID 及待重置的新密码
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:user:resetPwd')")
   @Log(title = "用户管理", businessType = BusinessType.UPDATE)
   @PutMapping("/resetPwd")
@@ -171,7 +220,12 @@ public class SysUserController extends BaseController {
     return toAjax(userService.resetPwd(user));
   }
 
-  /** 状态修改 */
+  /**
+   * 状态修改
+   *
+   * @param user 用户 ID 及目标启停状态
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:user:edit')")
   @Log(title = "用户管理", businessType = BusinessType.UPDATE)
   @PutMapping("/changeStatus")
@@ -182,7 +236,12 @@ public class SysUserController extends BaseController {
     return toAjax(userService.updateUserStatus(user));
   }
 
-  /** 根据用户编号获取授权角色 */
+  /**
+   * 根据用户编号获取授权角色
+   *
+   * @param userId 用户 ID
+   * @return 用户信息及已分配角色列表
+   */
   @PreAuthorize("@ss.hasPermi('system:user:query')")
   @GetMapping("/authRole/{userId}")
   public AjaxResult authRole(@PathVariable("userId") Long userId) {
@@ -198,7 +257,13 @@ public class SysUserController extends BaseController {
     return ajax;
   }
 
-  /** 用户授权角色 */
+  /**
+   * 用户授权角色
+   *
+   * @param userId 用户 ID
+   * @param roleIds 角色 ID 集合
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:user:edit')")
   @Log(title = "用户管理", businessType = BusinessType.GRANT)
   @PutMapping("/authRole")
@@ -209,7 +274,12 @@ public class SysUserController extends BaseController {
     return success();
   }
 
-  /** 获取部门树列表 */
+  /**
+   * 获取部门树列表
+   *
+   * @param dept 部门筛选条件
+   * @return 当前用户权限范围内的部门树
+   */
   @PreAuthorize("@ss.hasPermi('system:user:list')")
   @GetMapping("/deptTree")
   public AjaxResult deptTree(SysDept dept) {

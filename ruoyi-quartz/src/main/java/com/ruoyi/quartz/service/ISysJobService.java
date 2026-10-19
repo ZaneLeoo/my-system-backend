@@ -32,6 +32,7 @@ public interface ISysJobService {
    *
    * @param job 调度信息
    * @return 结果
+   * @throws SchedulerException 调度器执行任务操作失败时
    */
   public int pauseJob(SysJob job) throws SchedulerException;
 
@@ -40,6 +41,7 @@ public interface ISysJobService {
    *
    * @param job 调度信息
    * @return 结果
+   * @throws SchedulerException 调度器执行任务操作失败时
    */
   public int resumeJob(SysJob job) throws SchedulerException;
 
@@ -48,6 +50,7 @@ public interface ISysJobService {
    *
    * @param job 调度信息
    * @return 结果
+   * @throws SchedulerException 调度器执行任务操作失败时
    */
   public int deleteJob(SysJob job) throws SchedulerException;
 
@@ -56,6 +59,7 @@ public interface ISysJobService {
    *
    * @param jobIds 需要删除的任务ID
    * @return 结果
+   * @throws SchedulerException 调度器执行任务操作失败时
    */
   public void deleteJobByIds(Long[] jobIds) throws SchedulerException;
 
@@ -64,6 +68,7 @@ public interface ISysJobService {
    *
    * @param job 调度信息
    * @return 结果
+   * @throws SchedulerException 调度器执行任务操作失败时
    */
   public int changeStatus(SysJob job) throws SchedulerException;
 
@@ -72,6 +77,7 @@ public interface ISysJobService {
    *
    * @param job 调度信息
    * @return 结果
+   * @throws SchedulerException 调度器执行任务操作失败时
    */
   public boolean run(SysJob job) throws SchedulerException;
 
@@ -80,6 +86,8 @@ public interface ISysJobService {
    *
    * @param job 调度信息
    * @return 结果
+   * @throws SchedulerException 调度器执行任务操作失败时
+   * @throws TaskException 任务配置不满足调度约束时
    */
   public int insertJob(SysJob job) throws SchedulerException, TaskException;
 
@@ -88,6 +96,8 @@ public interface ISysJobService {
    *
    * @param job 调度信息
    * @return 结果
+   * @throws SchedulerException 调度器执行任务操作失败时
+   * @throws TaskException 任务配置不满足调度约束时
    */
   public int updateJob(SysJob job) throws SchedulerException, TaskException;
 

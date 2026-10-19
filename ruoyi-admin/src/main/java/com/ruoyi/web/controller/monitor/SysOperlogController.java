@@ -29,6 +29,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class SysOperlogController extends BaseController {
   @Autowired private ISysOperLogService operLogService;
 
+  /**
+   * 按筛选条件分页查询操作日志。
+   *
+   * @param operLog 操作日志筛选条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('monitor:operlog:list')")
   @GetMapping("/list")
   public TableDataInfo list(SysOperLog operLog) {
@@ -37,6 +43,12 @@ public class SysOperlogController extends BaseController {
     return getDataTable(list);
   }
 
+  /**
+   * 按筛选条件导出操作日志。
+   *
+   * @param response 用于写入下载文件或响应内容的 HTTP 响应
+   * @param operLog 操作日志筛选条件
+   */
   @Log(title = "操作日志", businessType = BusinessType.EXPORT)
   @PreAuthorize("@ss.hasPermi('monitor:operlog:export')")
   @PostMapping("/export")
@@ -46,6 +58,12 @@ public class SysOperlogController extends BaseController {
     util.exportExcel(response, list, "操作日志");
   }
 
+  /**
+   * 批量删除指定操作日志。
+   *
+   * @param operIds 操作日志 ID 集合
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @Log(title = "操作日志", businessType = BusinessType.DELETE)
   @PreAuthorize("@ss.hasPermi('monitor:operlog:remove')")
   @DeleteMapping("/{operIds}")
@@ -53,6 +71,11 @@ public class SysOperlogController extends BaseController {
     return toAjax(operLogService.deleteOperLogByIds(operIds));
   }
 
+  /**
+   * 清空操作日志。
+   *
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @Log(title = "操作日志", businessType = BusinessType.CLEAN)
   @PreAuthorize("@ss.hasPermi('monitor:operlog:remove')")
   @DeleteMapping("/clean")

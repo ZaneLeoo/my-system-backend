@@ -37,7 +37,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class SysJobController extends BaseController {
   @Autowired private ISysJobService jobService;
 
-  /** 查询定时任务列表 */
+  /**
+   * 查询定时任务列表
+   *
+   * @param sysJob 定时任务筛选条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('monitor:job:list')")
   @GetMapping("/list")
   public TableDataInfo list(SysJob sysJob) {
@@ -46,7 +51,12 @@ public class SysJobController extends BaseController {
     return getDataTable(list);
   }
 
-  /** 导出定时任务列表 */
+  /**
+   * 导出定时任务列表
+   *
+   * @param response 用于写入下载文件或响应内容的 HTTP 响应
+   * @param sysJob 定时任务筛选条件
+   */
   @PreAuthorize("@ss.hasPermi('monitor:job:export')")
   @Log(title = "定时任务", businessType = BusinessType.EXPORT)
   @PostMapping("/export")
@@ -56,14 +66,26 @@ public class SysJobController extends BaseController {
     util.exportExcel(response, list, "定时任务");
   }
 
-  /** 获取定时任务详细信息 */
+  /**
+   * 获取定时任务详细信息
+   *
+   * @param jobId 定时任务 ID
+   * @return 匹配的记录详情
+   */
   @PreAuthorize("@ss.hasPermi('monitor:job:query')")
   @GetMapping(value = "/{jobId}")
   public AjaxResult getInfo(@PathVariable("jobId") Long jobId) {
     return success(jobService.selectJobById(jobId));
   }
 
-  /** 新增定时任务 */
+  /**
+   * 新增定时任务
+   *
+   * @param job 待新增的定时任务信息
+   * @return 操作结果，失败时包含具体错误说明
+   * @throws SchedulerException 调度器执行任务操作失败时
+   * @throws TaskException 任务配置不满足调度约束时
+   */
   @PreAuthorize("@ss.hasPermi('monitor:job:add')")
   @Log(title = "定时任务", businessType = BusinessType.INSERT)
   @PostMapping
@@ -87,7 +109,14 @@ public class SysJobController extends BaseController {
     return toAjax(jobService.insertJob(job));
   }
 
-  /** 修改定时任务 */
+  /**
+   * 修改定时任务
+   *
+   * @param job 待修改的定时任务信息及其标识
+   * @return 操作结果，失败时包含具体错误说明
+   * @throws SchedulerException 调度器执行任务操作失败时
+   * @throws TaskException 任务配置不满足调度约束时
+   */
   @PreAuthorize("@ss.hasPermi('monitor:job:edit')")
   @Log(title = "定时任务", businessType = BusinessType.UPDATE)
   @PutMapping
@@ -111,7 +140,13 @@ public class SysJobController extends BaseController {
     return toAjax(jobService.updateJob(job));
   }
 
-  /** 定时任务状态修改 */
+  /**
+   * 定时任务状态修改
+   *
+   * @param job 待操作的定时任务信息
+   * @return 操作结果，失败时包含具体错误说明
+   * @throws SchedulerException 调度器执行任务操作失败时
+   */
   @PreAuthorize("@ss.hasPermi('monitor:job:changeStatus')")
   @Log(title = "定时任务", businessType = BusinessType.UPDATE)
   @PutMapping("/changeStatus")
@@ -121,7 +156,13 @@ public class SysJobController extends BaseController {
     return toAjax(jobService.changeStatus(newJob));
   }
 
-  /** 定时任务立即执行一次 */
+  /**
+   * 定时任务立即执行一次
+   *
+   * @param job 待操作的定时任务信息
+   * @return 操作结果，失败时包含具体错误说明
+   * @throws SchedulerException 调度器执行任务操作失败时
+   */
   @PreAuthorize("@ss.hasPermi('monitor:job:changeStatus')")
   @Log(title = "定时任务", businessType = BusinessType.UPDATE)
   @PutMapping("/run")
@@ -130,7 +171,13 @@ public class SysJobController extends BaseController {
     return result ? success() : error("任务不存在或已过期！");
   }
 
-  /** 删除定时任务 */
+  /**
+   * 删除定时任务
+   *
+   * @param jobIds 定时任务 ID 集合
+   * @return 操作结果，失败时包含具体错误说明
+   * @throws SchedulerException 调度器执行任务操作失败时
+   */
   @PreAuthorize("@ss.hasPermi('monitor:job:remove')")
   @Log(title = "定时任务", businessType = BusinessType.DELETE)
   @DeleteMapping("/{jobIds}")

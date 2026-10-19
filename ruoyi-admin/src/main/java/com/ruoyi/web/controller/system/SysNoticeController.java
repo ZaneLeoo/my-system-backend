@@ -35,7 +35,12 @@ public class SysNoticeController extends BaseController {
 
   @Autowired private ISysNoticeReadService noticeReadService;
 
-  /** 获取通知公告列表 */
+  /**
+   * 获取通知公告列表
+   *
+   * @param notice 通知公告筛选条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('system:notice:list')")
   @GetMapping("/list")
   public TableDataInfo list(SysNotice notice) {
@@ -44,13 +49,23 @@ public class SysNoticeController extends BaseController {
     return getDataTable(list);
   }
 
-  /** 根据通知公告编号获取详细信息 */
+  /**
+   * 根据通知公告编号获取详细信息
+   *
+   * @param noticeId 通知公告 ID
+   * @return 匹配的记录详情
+   */
   @GetMapping(value = "/{noticeId}")
   public AjaxResult getInfo(@PathVariable Long noticeId) {
     return success(noticeService.selectNoticeById(noticeId));
   }
 
-  /** 新增通知公告 */
+  /**
+   * 新增通知公告
+   *
+   * @param notice 待新增的通知公告信息
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:notice:add')")
   @Log(title = "通知公告", businessType = BusinessType.INSERT)
   @PostMapping
@@ -59,7 +74,12 @@ public class SysNoticeController extends BaseController {
     return toAjax(noticeService.insertNotice(notice));
   }
 
-  /** 修改通知公告 */
+  /**
+   * 修改通知公告
+   *
+   * @param notice 待修改的通知公告信息及其标识
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:notice:edit')")
   @Log(title = "通知公告", businessType = BusinessType.UPDATE)
   @PutMapping
@@ -68,7 +88,11 @@ public class SysNoticeController extends BaseController {
     return toAjax(noticeService.updateNotice(notice));
   }
 
-  /** 首页顶部公告列表（返回全部正常公告，带当前用户已读标记，最多5条） */
+  /**
+   * 首页顶部公告列表（返回全部正常公告，带当前用户已读标记，最多5条）
+   *
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @GetMapping("/listTop")
   @ResponseBody
   public AjaxResult listTop() {
@@ -80,7 +104,12 @@ public class SysNoticeController extends BaseController {
     return result;
   }
 
-  /** 标记公告已读 */
+  /**
+   * 标记公告已读
+   *
+   * @param noticeId 通知公告 ID
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PostMapping("/markRead")
   @ResponseBody
   public AjaxResult markRead(Long noticeId) {
@@ -89,7 +118,12 @@ public class SysNoticeController extends BaseController {
     return success();
   }
 
-  /** 批量标记已读 */
+  /**
+   * 批量标记已读
+   *
+   * @param ids 以逗号分隔的公告 ID
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PostMapping("/markReadAll")
   @ResponseBody
   public AjaxResult markReadAll(String ids) {
@@ -99,7 +133,13 @@ public class SysNoticeController extends BaseController {
     return success();
   }
 
-  /** 已读用户列表数据 */
+  /**
+   * 已读用户列表数据
+   *
+   * @param noticeId 通知公告 ID
+   * @param searchValue 用户搜索关键字，可为空
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('system:notice:list')")
   @GetMapping("/readUsers/list")
   @ResponseBody
@@ -109,7 +149,12 @@ public class SysNoticeController extends BaseController {
     return getDataTable(list);
   }
 
-  /** 删除通知公告 */
+  /**
+   * 删除通知公告
+   *
+   * @param noticeIds 公告 ID 集合
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:notice:remove')")
   @Log(title = "通知公告", businessType = BusinessType.DELETE)
   @DeleteMapping("/{noticeIds}")

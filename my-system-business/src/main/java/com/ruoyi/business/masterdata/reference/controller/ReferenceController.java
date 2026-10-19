@@ -26,14 +26,24 @@ public class ReferenceController {
     this.service = service;
   }
 
-  /** 分页搜索可供新选的启用料品。 */
+  /**
+   * 分页搜索可供新选的启用料品。
+   *
+   * @param query 业务筛选、分页及白名单排序条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @GetMapping("/items")
   @PreAuthorize("@ss.hasPermi('masterdata:item:reference')")
   public R<PageResult<ItemReference>> items(@Valid ItemReferenceQuery query) {
     return R.ok(service.items(query));
   }
 
-  /** 批量回显与确认复核，缺失记录由调用方标记失效。 */
+  /**
+   * 批量回显与确认复核，缺失记录由调用方标记失效。
+   *
+   * @param ids 批量回显的不同记录 ID，每次最多 100 个
+   * @return 匹配的未删除记录，包含允许回显的停用旧值
+   */
   @GetMapping("/items/resolve")
   @PreAuthorize("@ss.hasPermi('masterdata:item:reference')")
   public R<List<ItemReference>> resolve(
@@ -41,21 +51,33 @@ public class ReferenceController {
     return R.ok(service.resolve(ids));
   }
 
-  /** 料品参照用户可读取窗口内的分类筛选树。 */
+  /**
+   * 料品参照用户可读取窗口内的分类筛选树。
+   *
+   * @return 分类树选项，保留展示所需的层级关系
+   */
   @GetMapping("/items/category-options")
   @PreAuthorize("@ss.hasPermi('masterdata:item:reference')")
   public R<List<CategoryTreeNode>> itemCategories() {
     return R.ok(service.categories());
   }
 
-  /** 单位参照用户可读取完整单位选项。 */
+  /**
+   * 单位参照用户可读取完整单位选项。
+   *
+   * @return 完整单位选项，包含未删除的停用旧值
+   */
   @GetMapping("/units")
   @PreAuthorize("@ss.hasPermi('masterdata:unit:reference')")
   public R<List<UnitOption>> units() {
     return R.ok(service.units());
   }
 
-  /** 分类参照用户可读取分类树。 */
+  /**
+   * 分类参照用户可读取分类树。
+   *
+   * @return 分类树选项，保留展示所需的层级关系
+   */
   @GetMapping("/categories")
   @PreAuthorize("@ss.hasPermi('masterdata:category:reference')")
   public R<List<CategoryTreeNode>> categories() {

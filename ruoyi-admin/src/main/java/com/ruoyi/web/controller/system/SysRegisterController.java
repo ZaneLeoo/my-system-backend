@@ -22,6 +22,12 @@ public class SysRegisterController extends BaseController {
 
   @Autowired private ISysConfigService configService;
 
+  /**
+   * 在允许注册时创建新用户。
+   *
+   * @param user 待新增的用户信息
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PostMapping("/register")
   public AjaxResult register(@RequestBody RegisterBody user) {
     if (!("true".equals(configService.selectConfigByKey("sys.account.registerUser")))) {

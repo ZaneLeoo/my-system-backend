@@ -32,6 +32,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class SysDictTypeController extends BaseController {
   @Autowired private ISysDictTypeService dictTypeService;
 
+  /**
+   * 按筛选条件分页查询字典类型。
+   *
+   * @param dictType 字典类型或筛选条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('system:dict:list')")
   @GetMapping("/list")
   public TableDataInfo list(SysDictType dictType) {
@@ -40,6 +46,12 @@ public class SysDictTypeController extends BaseController {
     return getDataTable(list);
   }
 
+  /**
+   * 按筛选条件导出字典类型。
+   *
+   * @param response 用于写入下载文件或响应内容的 HTTP 响应
+   * @param dictType 字典类型或筛选条件
+   */
   @Log(title = "字典类型", businessType = BusinessType.EXPORT)
   @PreAuthorize("@ss.hasPermi('system:dict:export')")
   @PostMapping("/export")
@@ -49,14 +61,24 @@ public class SysDictTypeController extends BaseController {
     util.exportExcel(response, list, "字典类型");
   }
 
-  /** 查询字典类型详细 */
+  /**
+   * 查询字典类型详细
+   *
+   * @param dictId 字典类型 ID
+   * @return 匹配的记录详情
+   */
   @PreAuthorize("@ss.hasPermi('system:dict:query')")
   @GetMapping(value = "/{dictId}")
   public AjaxResult getInfo(@PathVariable Long dictId) {
     return success(dictTypeService.selectDictTypeById(dictId));
   }
 
-  /** 新增字典类型 */
+  /**
+   * 新增字典类型
+   *
+   * @param dict 待新增的字典信息
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:dict:add')")
   @Log(title = "字典类型", businessType = BusinessType.INSERT)
   @PostMapping
@@ -68,7 +90,12 @@ public class SysDictTypeController extends BaseController {
     return toAjax(dictTypeService.insertDictType(dict));
   }
 
-  /** 修改字典类型 */
+  /**
+   * 修改字典类型
+   *
+   * @param dict 待修改的字典信息及其标识
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:dict:edit')")
   @Log(title = "字典类型", businessType = BusinessType.UPDATE)
   @PutMapping
@@ -80,7 +107,12 @@ public class SysDictTypeController extends BaseController {
     return toAjax(dictTypeService.updateDictType(dict));
   }
 
-  /** 删除字典类型 */
+  /**
+   * 删除字典类型
+   *
+   * @param dictIds 字典类型 ID 集合
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:dict:remove')")
   @Log(title = "字典类型", businessType = BusinessType.DELETE)
   @DeleteMapping("/{dictIds}")
@@ -89,7 +121,11 @@ public class SysDictTypeController extends BaseController {
     return success();
   }
 
-  /** 刷新字典缓存 */
+  /**
+   * 刷新字典缓存
+   *
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:dict:remove')")
   @Log(title = "字典类型", businessType = BusinessType.CLEAN)
   @DeleteMapping("/refreshCache")
@@ -98,7 +134,11 @@ public class SysDictTypeController extends BaseController {
     return success();
   }
 
-  /** 获取字典选择框列表 */
+  /**
+   * 获取字典选择框列表
+   *
+   * @return 操作结果或选项列表
+   */
   @GetMapping("/optionselect")
   public AjaxResult optionselect() {
     List<SysDictType> dictTypes = dictTypeService.selectDictTypeAll();

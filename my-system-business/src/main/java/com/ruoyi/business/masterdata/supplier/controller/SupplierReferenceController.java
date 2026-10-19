@@ -18,7 +18,11 @@ public class SupplierReferenceController {
     this.service = service;
   }
 
-  /** 返回完整选项，停用旧值允许回显，新选由组件和后续单据服务校验。 */
+  /**
+   * 返回完整选项，停用旧值允许回显，新选由组件和后续单据服务校验。
+   *
+   * @return 完整供应商参照选项，包含用于历史回显的停用记录
+   */
   @GetMapping("/masterdata/reference/suppliers")
   @PreAuthorize("@ss.hasPermi('masterdata:supplier:reference')")
   public R<List<SupplierOption>> options() {

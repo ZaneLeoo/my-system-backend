@@ -50,7 +50,17 @@ public class QueryCompiler {
     return value;
   }
 
-  /** 在服务器分页与强制条件外编译用户表达式。 */
+  /**
+   * 将已发布字段配置和请求条件树编译为可绑定的 SQL 条件及稳定排序。
+   *
+   * <p>校验来源、字段、运算符、值类型和复杂度限制；服务端强制条件始终放在用户表达式之外，所有用户值保存在独立参数列表中。
+   *
+   * @param adapter 控制主表、关联来源、默认排序和业务值校验的适配器
+   * @param snapshot 经发布或草稿验证得到的受控字段快照
+   * @param request 需要校验的分页、排序和条件树
+   * @return SQL 条件模板、绑定参数及主键补充排序
+   * @throws ServiceException 请求分页、排序、条件结构或条件值不合法时
+   */
   public CompiledQuery compile(
       QueryAdapter adapter, QuerySnapshot snapshot, SearchRequest request) {
     if (request == null

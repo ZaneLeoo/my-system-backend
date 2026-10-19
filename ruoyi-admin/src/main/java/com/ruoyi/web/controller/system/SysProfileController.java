@@ -38,7 +38,11 @@ public class SysProfileController extends BaseController {
 
   @Autowired private TokenService tokenService;
 
-  /** 个人信息 */
+  /**
+   * 个人信息
+   *
+   * @return 当前用户资料及所属角色和岗位信息
+   */
   @GetMapping
   public AjaxResult profile() {
     LoginUser loginUser = getLoginUser();
@@ -49,7 +53,12 @@ public class SysProfileController extends BaseController {
     return ajax;
   }
 
-  /** 修改用户 */
+  /**
+   * 修改用户
+   *
+   * @param user 待修改的用户信息及其标识
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @Log(title = "个人信息", businessType = BusinessType.UPDATE)
   @PutMapping
   public AjaxResult updateProfile(@RequestBody SysUser user) {
@@ -74,7 +83,12 @@ public class SysProfileController extends BaseController {
     return error("修改个人信息异常，请联系管理员");
   }
 
-  /** 重置密码 */
+  /**
+   * 重置密码
+   *
+   * @param params 旧密码和新密码，分别使用 oldPassword、newPassword 键
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @Log(title = "个人信息", businessType = BusinessType.UPDATE)
   @PutMapping("/updatePwd")
   public AjaxResult updatePwd(@RequestBody Map<String, String> params) {
@@ -101,7 +115,13 @@ public class SysProfileController extends BaseController {
     return error("修改密码异常，请联系管理员");
   }
 
-  /** 头像上传 */
+  /**
+   * 头像上传
+   *
+   * @param file 客户端上传的文件
+   * @return 操作结果，失败时包含具体错误说明
+   * @throws Exception 执行接口操作失败时
+   */
   @Log(title = "用户头像", businessType = BusinessType.UPDATE)
   @PostMapping("/avatar")
   public AjaxResult avatar(@RequestParam("avatarfile") MultipartFile file) throws Exception {

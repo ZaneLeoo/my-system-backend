@@ -29,7 +29,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class SysJobLogController extends BaseController {
   @Autowired private ISysJobLogService jobLogService;
 
-  /** 查询定时任务调度日志列表 */
+  /**
+   * 查询定时任务调度日志列表
+   *
+   * @param sysJobLog 任务执行日志筛选条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('monitor:job:list')")
   @GetMapping("/list")
   public TableDataInfo list(SysJobLog sysJobLog) {
@@ -38,7 +43,12 @@ public class SysJobLogController extends BaseController {
     return getDataTable(list);
   }
 
-  /** 导出定时任务调度日志列表 */
+  /**
+   * 导出定时任务调度日志列表
+   *
+   * @param response 用于写入下载文件或响应内容的 HTTP 响应
+   * @param sysJobLog 任务执行日志筛选条件
+   */
   @PreAuthorize("@ss.hasPermi('monitor:job:export')")
   @Log(title = "任务调度日志", businessType = BusinessType.EXPORT)
   @PostMapping("/export")
@@ -48,14 +58,24 @@ public class SysJobLogController extends BaseController {
     util.exportExcel(response, list, "调度日志");
   }
 
-  /** 根据调度编号获取详细信息 */
+  /**
+   * 根据调度编号获取详细信息
+   *
+   * @param jobLogId 任务执行日志 ID
+   * @return 匹配的记录详情
+   */
   @PreAuthorize("@ss.hasPermi('monitor:job:query')")
   @GetMapping(value = "/{jobLogId}")
   public AjaxResult getInfo(@PathVariable Long jobLogId) {
     return success(jobLogService.selectJobLogById(jobLogId));
   }
 
-  /** 删除定时任务调度日志 */
+  /**
+   * 删除定时任务调度日志
+   *
+   * @param jobLogIds 任务执行日志 ID 集合
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('monitor:job:remove')")
   @Log(title = "定时任务调度日志", businessType = BusinessType.DELETE)
   @DeleteMapping("/{jobLogIds}")
@@ -63,7 +83,11 @@ public class SysJobLogController extends BaseController {
     return toAjax(jobLogService.deleteJobLogByIds(jobLogIds));
   }
 
-  /** 清空定时任务调度日志 */
+  /**
+   * 清空定时任务调度日志
+   *
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('monitor:job:remove')")
   @Log(title = "调度日志", businessType = BusinessType.CLEAN)
   @DeleteMapping("/clean")

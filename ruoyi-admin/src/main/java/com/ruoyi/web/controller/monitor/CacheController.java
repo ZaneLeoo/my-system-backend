@@ -44,6 +44,12 @@ public class CacheController {
     caches.add(new SysCache(CacheConstants.PWD_ERR_CNT_KEY, "密码错误次数"));
   }
 
+  /**
+   * 查询 Redis 运行信息、数据库大小和命令统计。
+   *
+   * @return Redis 运行信息、数据库大小和命令使用统计
+   * @throws Exception 执行接口操作失败时
+   */
   @SuppressWarnings("deprecation")
   @PreAuthorize("@ss.hasPermi('monitor:cache:list')")
   @GetMapping()
@@ -76,12 +82,23 @@ public class CacheController {
     return AjaxResult.success(result);
   }
 
+  /**
+   * 查询预定义缓存分类。
+   *
+   * @return 系统预定义的缓存分类列表
+   */
   @PreAuthorize("@ss.hasPermi('monitor:cache:list')")
   @GetMapping("/getNames")
   public AjaxResult cache() {
     return AjaxResult.success(caches);
   }
 
+  /**
+   * 查询指定缓存分类下的键名。
+   *
+   * @param cacheName 缓存分类前缀
+   * @return 符合指定缓存分类前缀的键名集合
+   */
   @PreAuthorize("@ss.hasPermi('monitor:cache:list')")
   @GetMapping("/getKeys/{cacheName}")
   public AjaxResult getCacheKeys(@PathVariable String cacheName) {
@@ -89,6 +106,13 @@ public class CacheController {
     return AjaxResult.success(new TreeSet<>(cacheKeys));
   }
 
+  /**
+   * 查询指定缓存键对应的内容。
+   *
+   * @param cacheName 缓存分类前缀
+   * @param cacheKey 缓存键名
+   * @return 缓存分类、键名及对应内容
+   */
   @PreAuthorize("@ss.hasPermi('monitor:cache:list')")
   @GetMapping("/getValue/{cacheName}/{cacheKey}")
   public AjaxResult getCacheValue(@PathVariable String cacheName, @PathVariable String cacheKey) {
@@ -97,6 +121,12 @@ public class CacheController {
     return AjaxResult.success(sysCache);
   }
 
+  /**
+   * 清理指定缓存分类下的数据。
+   *
+   * @param cacheName 缓存分类前缀
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('monitor:cache:list')")
   @DeleteMapping("/clearCacheName/{cacheName}")
   public AjaxResult clearCacheName(@PathVariable String cacheName) {
@@ -105,6 +135,12 @@ public class CacheController {
     return AjaxResult.success();
   }
 
+  /**
+   * 清理指定缓存键。
+   *
+   * @param cacheKey 缓存键名
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('monitor:cache:list')")
   @DeleteMapping("/clearCacheKey/{cacheKey}")
   public AjaxResult clearCacheKey(@PathVariable String cacheKey) {
@@ -112,6 +148,11 @@ public class CacheController {
     return AjaxResult.success();
   }
 
+  /**
+   * 清理当前 Redis 数据库中的全部缓存。
+   *
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('monitor:cache:list')")
   @DeleteMapping("/clearCacheAll")
   public AjaxResult clearCacheAll() {

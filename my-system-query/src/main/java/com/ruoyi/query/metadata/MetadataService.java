@@ -125,7 +125,13 @@ public class MetadataService {
         new QueryWrapper<MetadataColumn>().eq("table_id", id).orderByAsc("ordinal_position"));
   }
 
-  /** 在同一事务导入指定表，重复导入不覆盖人工配置。 */
+  /**
+   * 将当前数据库中已登记的物理表及字段结构导入元数据目录。
+   *
+   * @param name 开发者登记的物理表名，不能为任意表名或 SQL
+   * @return 已存在的目录或本次在同一事务创建的表及字段目录
+   * @throws ServiceException 表名未登记或当前数据库中不存在该业务表时
+   */
   @Transactional(rollbackFor = Exception.class)
   public MetadataTable importTable(String name) {
     if (!registry.tables().contains(name)) {
@@ -161,7 +167,13 @@ public class MetadataService {
     return t;
   }
 
-  /** 生成完整结构差异及确认签名，不改变目录。 */
+  /**
+   * 只读比较真实字段结构与已导入目录，生成同步预览及配置影响范围。
+   *
+   * @param id 表目录 ID
+   * @return 目录版本、真实结构签名、新增及变更字段、失效字段和引用该表的查询对象
+   * @throws ServiceException 目录不存在或对应物理表未登记为允许的业务来源时
+   */
   public Map<String, Object> preview(Long id) {
     MetadataTable t = require(id);
     List<MetadataColumn> actual = physical(t.getTableName());
@@ -203,7 +215,17 @@ public class MetadataService {
         references);
   }
 
-  /** 持锁复核预览签名，保留名称和字段 ID，删除项仅标记失效。 */
+  /**
+   * 在事务锁内复核预览版本和结构签名后同步元数据目录。
+   *
+   * <p>保留已有字段 ID 及人工名称，新增字段仅进入目录，物理删除字段标记失效，不自动修改查询配置。
+   *
+   * @param id 待同步的表目录 ID
+   * @param version 预览返回的目录版本
+   * @param expectedSignature 用户确认的真实结构签名
+   * @return 同步后的目录，版本递增并记录同步时间
+   * @throws ServiceException 目录版本过期或数据库结构与确认签名不一致时
+   */
   @Transactional(rollbackFor = Exception.class)
   public MetadataTable synchronize(Long id, Integer version, String expectedSignature) {
     MetadataTable t =

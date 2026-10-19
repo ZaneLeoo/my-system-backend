@@ -32,7 +32,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class SysConfigController extends BaseController {
   @Autowired private ISysConfigService configService;
 
-  /** 获取参数配置列表 */
+  /**
+   * 获取参数配置列表
+   *
+   * @param config 参数配置筛选条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('system:config:list')")
   @GetMapping("/list")
   public TableDataInfo list(SysConfig config) {
@@ -41,6 +46,12 @@ public class SysConfigController extends BaseController {
     return getDataTable(list);
   }
 
+  /**
+   * 按筛选条件导出参数配置。
+   *
+   * @param response 用于写入下载文件或响应内容的 HTTP 响应
+   * @param config 参数配置筛选条件
+   */
   @Log(title = "参数管理", businessType = BusinessType.EXPORT)
   @PreAuthorize("@ss.hasPermi('system:config:export')")
   @PostMapping("/export")
@@ -50,20 +61,35 @@ public class SysConfigController extends BaseController {
     util.exportExcel(response, list, "参数数据");
   }
 
-  /** 根据参数编号获取详细信息 */
+  /**
+   * 根据参数编号获取详细信息
+   *
+   * @param configId 参数配置 ID
+   * @return 匹配的记录详情
+   */
   @PreAuthorize("@ss.hasPermi('system:config:query')")
   @GetMapping(value = "/{configId}")
   public AjaxResult getInfo(@PathVariable Long configId) {
     return success(configService.selectConfigById(configId));
   }
 
-  /** 根据参数键名查询参数值 */
+  /**
+   * 根据参数键名查询参数值
+   *
+   * @param configKey 系统参数键名
+   * @return 匹配的配置值或字典选项
+   */
   @GetMapping(value = "/configKey/{configKey}")
   public AjaxResult getConfigKey(@PathVariable String configKey) {
     return success(configService.selectConfigByKey(configKey));
   }
 
-  /** 新增参数配置 */
+  /**
+   * 新增参数配置
+   *
+   * @param config 待新增的参数配置信息
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:config:add')")
   @Log(title = "参数管理", businessType = BusinessType.INSERT)
   @PostMapping
@@ -75,7 +101,12 @@ public class SysConfigController extends BaseController {
     return toAjax(configService.insertConfig(config));
   }
 
-  /** 修改参数配置 */
+  /**
+   * 修改参数配置
+   *
+   * @param config 待修改的参数配置信息及其标识
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:config:edit')")
   @Log(title = "参数管理", businessType = BusinessType.UPDATE)
   @PutMapping
@@ -87,7 +118,12 @@ public class SysConfigController extends BaseController {
     return toAjax(configService.updateConfig(config));
   }
 
-  /** 删除参数配置 */
+  /**
+   * 删除参数配置
+   *
+   * @param configIds 参数配置 ID 集合
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:config:remove')")
   @Log(title = "参数管理", businessType = BusinessType.DELETE)
   @DeleteMapping("/{configIds}")
@@ -96,7 +132,11 @@ public class SysConfigController extends BaseController {
     return success();
   }
 
-  /** 刷新参数缓存 */
+  /**
+   * 刷新参数缓存
+   *
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:config:remove')")
   @Log(title = "参数管理", businessType = BusinessType.CLEAN)
   @DeleteMapping("/refreshCache")

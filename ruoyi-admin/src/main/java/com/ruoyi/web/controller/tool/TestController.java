@@ -35,6 +35,11 @@ public class TestController extends BaseController {
     users.put(2, new UserEntity(2, "ry", "admin123", "15666666666"));
   }
 
+  /**
+   * 查询示例接口内存中的用户列表。
+   *
+   * @return 符合条件的示例用户列表
+   */
   @Operation(summary = "获取用户列表")
   @GetMapping("/list")
   public R<List<UserEntity>> userList() {
@@ -42,6 +47,12 @@ public class TestController extends BaseController {
     return R.ok(userList);
   }
 
+  /**
+   * 按编号查询示例用户。
+   *
+   * @param userId 用户 ID
+   * @return 匹配的用户；不存在时返回失败响应
+   */
   @Operation(summary = "获取用户详细")
   @GetMapping("/{userId}")
   public R<UserEntity> getUser(@PathVariable(name = "userId") Integer userId) {
@@ -52,6 +63,12 @@ public class TestController extends BaseController {
     }
   }
 
+  /**
+   * 在示例接口的内存集合中新增用户。
+   *
+   * @param user 待写入内存集合的用户信息，必须包含用户 ID
+   * @return 保存结果，未提供用户 ID 时返回失败响应
+   */
   @Operation(summary = "新增用户")
   @PostMapping("/save")
   public R<String> save(UserEntity user) {
@@ -62,6 +79,12 @@ public class TestController extends BaseController {
     return R.ok();
   }
 
+  /**
+   * 修改内存集合中已有的示例用户。
+   *
+   * @param user 待修改的示例用户信息，必须包含已存在的用户 ID
+   * @return 修改结果，用户不存在时返回失败响应
+   */
   @Operation(summary = "更新用户")
   @PutMapping("/update")
   public R<String> update(@RequestBody UserEntity user) {
@@ -76,6 +99,12 @@ public class TestController extends BaseController {
     return R.ok();
   }
 
+  /**
+   * 从示例接口的内存集合中删除用户。
+   *
+   * @param userId 用户 ID
+   * @return 删除结果，用户不存在时返回失败响应
+   */
   @Operation(summary = "删除用户信息")
   @DeleteMapping("/{userId}")
   public R<String> delete(@PathVariable(name = "userId") Integer userId) {

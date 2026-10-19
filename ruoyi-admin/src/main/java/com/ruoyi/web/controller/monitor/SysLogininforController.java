@@ -32,6 +32,12 @@ public class SysLogininforController extends BaseController {
 
   @Autowired private SysPasswordService passwordService;
 
+  /**
+   * 按筛选条件分页查询登录日志。
+   *
+   * @param logininfor 登录日志筛选条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('monitor:logininfor:list')")
   @GetMapping("/list")
   public TableDataInfo list(SysLogininfor logininfor) {
@@ -40,6 +46,12 @@ public class SysLogininforController extends BaseController {
     return getDataTable(list);
   }
 
+  /**
+   * 按筛选条件导出登录日志。
+   *
+   * @param response 用于写入下载文件或响应内容的 HTTP 响应
+   * @param logininfor 登录日志筛选条件
+   */
   @Log(title = "登录日志", businessType = BusinessType.EXPORT)
   @PreAuthorize("@ss.hasPermi('monitor:logininfor:export')")
   @PostMapping("/export")
@@ -49,6 +61,12 @@ public class SysLogininforController extends BaseController {
     util.exportExcel(response, list, "登录日志");
   }
 
+  /**
+   * 批量删除指定登录日志。
+   *
+   * @param infoIds 登录日志 ID 集合
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('monitor:logininfor:remove')")
   @Log(title = "登录日志", businessType = BusinessType.DELETE)
   @DeleteMapping("/{infoIds}")
@@ -56,6 +74,11 @@ public class SysLogininforController extends BaseController {
     return toAjax(logininforService.deleteLogininforByIds(infoIds));
   }
 
+  /**
+   * 清空登录日志。
+   *
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('monitor:logininfor:remove')")
   @Log(title = "登录日志", businessType = BusinessType.CLEAN)
   @DeleteMapping("/clean")
@@ -64,6 +87,12 @@ public class SysLogininforController extends BaseController {
     return success();
   }
 
+  /**
+   * 解除指定账号的密码重试锁定。
+   *
+   * @param userName 用户登录账号
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('monitor:logininfor:unlock')")
   @Log(title = "账户解锁", businessType = BusinessType.OTHER)
   @GetMapping("/unlock/{userName}")

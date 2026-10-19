@@ -15,7 +15,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/monitor/server")
 public class ServerController {
-
+  /**
+   * 查询服务器 CPU、内存、JVM 及磁盘信息。
+   *
+   * @return 服务器资源和 JVM 运行状态
+   * @throws Exception 执行接口操作失败时
+   */
   @PreAuthorize("@ss.hasPermi('monitor:server:list')")
   @GetMapping()
   public AjaxResult getInfo() throws Exception {

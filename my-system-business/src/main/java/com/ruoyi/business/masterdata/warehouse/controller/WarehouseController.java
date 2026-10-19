@@ -27,21 +27,36 @@ public class WarehouseController {
     this.service = service;
   }
 
-  /** 查询仓库分页结果，排序和筛选作用于全部符合条件的数据。 */
+  /**
+   * 查询仓库分页结果，排序和筛选作用于全部符合条件的数据。
+   *
+   * @param query 业务筛选、分页及白名单排序条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @GetMapping("/list")
   @PreAuthorize("@ss.hasPermi('masterdata:warehouse:list')")
   public R<PageResult<WarehouseView>> list(@Valid WarehouseQuery query) {
     return R.ok(service.list(query));
   }
 
-  /** 查询仓库详情。 */
+  /**
+   * 查询仓库详情。
+   *
+   * @param id 仓库 ID
+   * @return 最新的仓库详情及当前版本
+   */
   @GetMapping("/{id}")
   @PreAuthorize("@ss.hasPermi('masterdata:warehouse:query')")
   public R<WarehouseView> detail(@PathVariable @Positive Long id) {
     return R.ok(service.detail(id));
   }
 
-  /** 新增仓库并返回生成的详情。 */
+  /**
+   * 新增仓库并返回生成的详情。
+   *
+   * @param request 待新增的仓库字段
+   * @return 新增后的仓库详情，包含生成的 ID 和审计信息
+   */
   @PostMapping
   @PreAuthorize("@ss.hasPermi('masterdata:warehouse:add')")
   @Log(title = "仓库", businessType = BusinessType.INSERT)
@@ -49,7 +64,12 @@ public class WarehouseController {
     return R.ok(service.create(request));
   }
 
-  /** 按当前版本修改仓库及启停状态。 */
+  /**
+   * 按当前版本修改仓库及启停状态。
+   *
+   * @param request 待修改的仓库字段，包含主键和当前版本
+   * @return 操作成功响应，业务数据为空
+   */
   @PutMapping
   @PreAuthorize("@ss.hasPermi('masterdata:warehouse:edit')")
   @Log(title = "仓库", businessType = BusinessType.UPDATE)
@@ -58,7 +78,13 @@ public class WarehouseController {
     return R.ok();
   }
 
-  /** 按当前版本逻辑删除仓库。 */
+  /**
+   * 按当前版本逻辑删除仓库。
+   *
+   * @param id 仓库 ID
+   * @param version 读取时的记录版本，用于拒绝过期页面操作
+   * @return 操作成功响应，业务数据为空
+   */
   @DeleteMapping("/{id}")
   @PreAuthorize("@ss.hasPermi('masterdata:warehouse:remove')")
   @Log(title = "仓库", businessType = BusinessType.DELETE)

@@ -20,14 +20,24 @@ public class InventoryController {
     this.service = service;
   }
 
-  /** 按维度分页查询当前余额。 */
+  /**
+   * 按维度分页查询当前余额。
+   *
+   * @param query 业务筛选、分页及白名单排序条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @GetMapping("/balance/list")
   @PreAuthorize("@ss.hasPermi('inventory:balance:list')")
   public R<PageResult<BalanceView>> balances(@Valid InventoryQuery query) {
     return R.ok(service.balances(query));
   }
 
-  /** 查询包含冲销记录的实际库存流水。 */
+  /**
+   * 查询包含冲销记录的实际库存流水。
+   *
+   * @param query 业务筛选、分页及白名单排序条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @GetMapping("/transaction/list")
   @PreAuthorize("@ss.hasPermi('inventory:transaction:list')")
   public R<PageResult<TransactionView>> transactions(@Valid InventoryQuery query) {

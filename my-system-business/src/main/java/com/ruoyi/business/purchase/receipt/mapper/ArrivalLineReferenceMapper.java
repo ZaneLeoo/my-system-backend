@@ -12,7 +12,13 @@ public interface ArrivalLineReferenceMapper {
   String ELIGIBLE =
       " WHERE a.del_flag='0' AND l.del_flag='0' AND a.status='APPROVED' AND l.quantity>l.pending_receipt_quantity+l.received_quantity ";
 
-  /** 条件绑定且排序列由静态分支选择。 */
+  /**
+   * 条件绑定且排序列由静态分支选择。
+   *
+   * @param q 业务筛选、分页及白名单排序条件
+   * @param keyword 已转义的料品编码、名称包含匹配条件
+   * @return 符合条件的采购到货单列表
+   */
   @Select({
     "<script>",
     FIELDS,
@@ -26,7 +32,12 @@ public interface ArrivalLineReferenceMapper {
   List<ArrivalLineReference> search(
       @Param("q") ArrivalLineReferenceQuery q, @Param("keyword") String keyword);
 
-  /** 确认前重新核验来源状态及剩余额度。 */
+  /**
+   * 确认前重新核验来源状态及剩余额度。
+   *
+   * @param ids 需要批量回显的记录 ID 集合
+   * @return 匹配的未删除记录，包含允许回显的停用旧值
+   */
   @Select({
     "<script>",
     FIELDS,

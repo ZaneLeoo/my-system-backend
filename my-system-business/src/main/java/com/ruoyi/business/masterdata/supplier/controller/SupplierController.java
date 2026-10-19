@@ -27,21 +27,36 @@ public class SupplierController {
     this.service = service;
   }
 
-  /** 查询供应商分页结果，排序和筛选作用于全部符合条件的数据。 */
+  /**
+   * 查询供应商分页结果，排序和筛选作用于全部符合条件的数据。
+   *
+   * @param query 业务筛选、分页及白名单排序条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @GetMapping("/list")
   @PreAuthorize("@ss.hasPermi('masterdata:supplier:list')")
   public R<PageResult<SupplierView>> list(@Valid SupplierQuery query) {
     return R.ok(service.list(query));
   }
 
-  /** 查询供应商详情。 */
+  /**
+   * 查询供应商详情。
+   *
+   * @param id 供应商 ID
+   * @return 最新的供应商详情及当前版本
+   */
   @GetMapping("/{id}")
   @PreAuthorize("@ss.hasPermi('masterdata:supplier:query')")
   public R<SupplierView> detail(@PathVariable @Positive Long id) {
     return R.ok(service.detail(id));
   }
 
-  /** 新增供应商并返回生成的详情。 */
+  /**
+   * 新增供应商并返回生成的详情。
+   *
+   * @param request 待新增的供应商字段
+   * @return 新增后的供应商详情，包含生成的 ID 和审计信息
+   */
   @PostMapping
   @PreAuthorize("@ss.hasPermi('masterdata:supplier:add')")
   @Log(title = "供应商档案", businessType = BusinessType.INSERT)
@@ -49,7 +64,12 @@ public class SupplierController {
     return R.ok(service.create(request));
   }
 
-  /** 按当前版本修改供应商及启停状态。 */
+  /**
+   * 按当前版本修改供应商及启停状态。
+   *
+   * @param request 待修改的供应商字段，包含主键和当前版本
+   * @return 操作成功响应，业务数据为空
+   */
   @PutMapping
   @PreAuthorize("@ss.hasPermi('masterdata:supplier:edit')")
   @Log(title = "供应商档案", businessType = BusinessType.UPDATE)
@@ -58,7 +78,13 @@ public class SupplierController {
     return R.ok();
   }
 
-  /** 按当前版本逻辑删除供应商。 */
+  /**
+   * 按当前版本逻辑删除供应商。
+   *
+   * @param id 供应商 ID
+   * @param version 读取时的记录版本，用于拒绝过期页面操作
+   * @return 操作成功响应，业务数据为空
+   */
   @DeleteMapping("/{id}")
   @PreAuthorize("@ss.hasPermi('masterdata:supplier:remove')")
   @Log(title = "供应商档案", businessType = BusinessType.DELETE)

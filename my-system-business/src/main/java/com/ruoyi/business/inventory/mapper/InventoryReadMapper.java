@@ -7,7 +7,13 @@ import org.apache.ibatis.annotations.*;
 
 /** 库存只读查询，不过滤停用档案，避免历史库存失联。 */
 public interface InventoryReadMapper {
-  /** 当前余额分页及数量排序。 */
+  /**
+   * 当前余额分页及数量排序。
+   *
+   * @param q 业务筛选、分页及白名单排序条件
+   * @param keyword 已转义的料品编码、名称包含匹配条件
+   * @return 符合条件的库存列表
+   */
   @Select({
     "<script>",
     "SELECT b.*,w.warehouse_code,w.warehouse_name,l.location_code,l.location_name,i.item_code,i.item_name,i.specification,u.unit_name FROM inventory_balance b JOIN md_warehouse w ON w.warehouse_id=b.warehouse_id LEFT JOIN md_location l ON l.location_id=b.location_id JOIN md_item i ON i.item_id=b.item_id JOIN md_unit u ON u.unit_id=b.unit_id WHERE 1=1",
@@ -24,7 +30,14 @@ public interface InventoryReadMapper {
   })
   List<BalanceView> balances(@Param("q") InventoryQuery q, @Param("keyword") String keyword);
 
-  /** 流水查询全部使用历史快照，实际记账顺序稳定。 */
+  /**
+   * 流水查询全部使用历史快照，实际记账顺序稳定。
+   *
+   * @param q 业务筛选、分页及白名单排序条件
+   * @param keyword 已转义的料品编码、名称包含匹配条件
+   * @param receiptNo 已转义的入库单号包含匹配条件
+   * @return 符合条件的库存列表
+   */
   @Select({
     "<script>",
     "SELECT b.* FROM inventory_transaction b WHERE 1=1",

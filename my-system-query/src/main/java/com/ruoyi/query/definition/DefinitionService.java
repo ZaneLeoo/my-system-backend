@@ -156,7 +156,14 @@ public class DefinitionService {
     return registry.require(require(id).getAdapterKey()).optionProviders();
   }
 
-  /** 在行锁内保存草稿，拒绝移动或复用已存在的字段标识。 */
+  /**
+   * 按当前编辑版本保存整份查询草稿，并保留已有字段标识及来源绑定。
+   *
+   * @param id 查询定义 ID
+   * @param request 查询名称、启停状态、完整字段集合及编辑时的草稿版本
+   * @return 草稿版本递增后的查询定义；当前发布快照不受影响
+   * @throws ServiceException 编辑版本过期、字段标识不合法或试图换绑已有来源时
+   */
   @Transactional(rollbackFor = Exception.class)
   public QueryDefinition save(Long id, SaveDefinitionRequest request) {
     QueryDefinition d = lock(id, request.getVersion());
@@ -218,7 +225,15 @@ public class DefinitionService {
     return d;
   }
 
-  /** 将当前草稿解析为严格受控的可执行定义，预览和发布共用。 */
+  /**
+   * 解析并验证当前已保存草稿，为预览及发布生成受控配置快照。
+   *
+   * <p>验证字段真实来源、类型、控件、运算符、选项语义和默认排序；只纳入启用字段，不生成发布记录。
+   *
+   * @param id 查询定义 ID
+   * @return 已完成配置校验的当前草稿快照
+   * @throws ServiceException 字段目录失效、来源不匹配或配置超出适配器能力时
+   */
   public QuerySnapshot draft(Long id) {
     QueryDefinition d = require(id);
     QueryAdapter adapter = registry.require(d.getAdapterKey());
@@ -326,7 +341,14 @@ public class DefinitionService {
     return snapshot;
   }
 
-  /** 持锁检查预览版本后生成不可变快照。 */
+  /**
+   * 持锁检查草稿版本及真实数据库结构，在同一事务发布不可变快照。
+   *
+   * @param id 查询定义 ID
+   * @param version 当前草稿编辑版本，不是已发布配置版本
+   * @return 新建的发布记录，当前发布指针及草稿版本同步递增
+   * @throws ServiceException 编辑版本过期、草稿配置无效或物理结构尚未同步时
+   */
   @Transactional(rollbackFor = Exception.class)
   public QueryRelease publish(Long id, Integer version) {
     QueryDefinition d = lock(id, version);

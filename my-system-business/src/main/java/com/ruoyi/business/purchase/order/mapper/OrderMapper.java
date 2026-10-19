@@ -7,16 +7,32 @@ import org.apache.ibatis.annotations.*;
 
 /** 订单主表访问，默认 MP 查询过滤逻辑删除。 */
 public interface OrderMapper extends BaseMapper<PurchaseOrder> {
-  /** 当前登录员工及部门均需有效，不开放完整人员档案。 */
+  /**
+   * 当前登录员工及部门均需有效，不开放完整人员档案。
+   *
+   * @param id 创建单据的当前登录用户 ID
+   * @param deptId 部门 ID
+   * @return 指定用户及其部门的当前名称快照
+   */
   @Select(
       "SELECT u.user_id AS buyerId, COALESCE(NULLIF(u.nick_name,''), u.user_name) AS buyerName, d.dept_id AS deptId, d.dept_name AS deptName FROM sys_user u JOIN sys_dept d ON d.dept_id=u.dept_id WHERE u.user_id=#{id} AND u.dept_id=#{deptId} AND u.status='0' AND u.del_flag='0' AND d.status='0' AND d.del_flag='0'")
   OrderDefaults defaults(@Param("id") Long id, @Param("deptId") Long deptId);
 
-  /** 读取已存在的系统参数，直接使用参数管理保存的值。 */
+  /**
+   * 读取已存在的系统参数，直接使用参数管理保存的值。
+   *
+   * @param key 系统参数键名
+   * @return 系统参数值，未配置时返回 null
+   */
   @Select("SELECT config_value FROM sys_config WHERE config_key=#{key} ORDER BY config_id LIMIT 1")
   String configValue(@Param("key") String key);
 
-  /** 关闭前检查仍在准备或待审核的到货单，调用方已持分类事务锁。 */
+  /**
+   * 关闭前检查仍在准备或待审核的到货单，调用方已持分类事务锁。
+   *
+   * @param id 采购订单 ID
+   * @return 符合引用或唯一性检查条件的记录数
+   */
   @Select(
       "SELECT COUNT(*) FROM purchase_arrival_line l JOIN purchase_arrival a ON a.arrival_id=l.arrival_id WHERE l.order_id=#{id} AND l.del_flag='0' AND a.del_flag='0' AND a.status IN ('DRAFT','SUBMITTED')")
   long unfinishedArrivals(@Param("id") Long id);
@@ -25,7 +41,12 @@ public interface OrderMapper extends BaseMapper<PurchaseOrder> {
   String RECEIPT_AGGREGATE =
       "SELECT rl.order_line_id,SUM(CASE WHEN r.status='SUBMITTED' THEN rl.quantity ELSE 0 END) AS pending_receipt_quantity,SUM(CASE WHEN r.status='APPROVED' THEN rl.quantity ELSE 0 END) AS received_quantity FROM purchase_receipt_line rl JOIN purchase_receipt r ON r.receipt_id=rl.receipt_id WHERE rl.del_flag='0' AND r.del_flag='0' AND r.status IN ('SUBMITTED','APPROVED') AND rl.order_id IN <foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach> GROUP BY rl.order_line_id";
 
-  /** 一次批量判断当前页各单的到货和入库进度，各行比较自身订购量，不合计不同单位。 */
+  /**
+   * 一次批量判断当前页各单的到货和入库进度，各行比较自身订购量，不合计不同单位。
+   *
+   * @param ids 当前页采购订单 ID 集合
+   * @return 按订单聚合的到货和入库执行进度
+   */
   @Select({
     "<script>",
     "SELECT ol.order_id,CASE WHEN MAX(ol.arrived_quantity)=0 THEN 'NOT_ARRIVED' WHEN MIN(CASE WHEN ol.arrived_quantity=ol.quantity THEN 1 ELSE 0 END)=1 THEN 'FULLY_ARRIVED' ELSE 'PARTIALLY_ARRIVED' END AS arrival_progress,CASE WHEN MAX(COALESCE(q.received_quantity,0))=0 THEN 'NOT_RECEIVED' WHEN MIN(CASE WHEN COALESCE(q.received_quantity,0)=ol.quantity THEN 1 ELSE 0 END)=1 THEN 'FULLY_RECEIVED' ELSE 'PARTIALLY_RECEIVED' END AS receipt_progress FROM purchase_order_line ol LEFT JOIN (",
@@ -36,7 +57,12 @@ public interface OrderMapper extends BaseMapper<PurchaseOrder> {
   java.util.List<com.ruoyi.business.purchase.order.vo.OrderExecutionProgress> executionProgress(
       @Param("ids") java.util.List<Long> ids);
 
-  /** 整单详情批量汇总来源行，草稿、作废及已删除单据／明细均不参与。 */
+  /**
+   * 整单详情批量汇总来源行，草稿、作废及已删除单据／明细均不参与。
+   *
+   * @param ids 当前页采购订单 ID 集合
+   * @return 各订单明细对应的待审核入库量和已入库量
+   */
   @Select({"<script>", RECEIPT_AGGREGATE, "</script>"})
   java.util.List<com.ruoyi.business.purchase.order.vo.OrderLineReceiptQuantities> receiptQuantities(
       @Param("ids") java.util.List<Long> ids);

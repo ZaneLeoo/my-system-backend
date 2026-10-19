@@ -25,14 +25,23 @@ public class SysIndexController {
 
   @Autowired private ISysUserService userService;
 
-  /** 访问首页，提示语 */
+  /**
+   * 访问首页，提示语
+   *
+   * @return 系统访问提示文本
+   */
   @RequestMapping("/")
   public String index() {
     return StringUtils.format(
         "欢迎使用{}后台管理框架，当前版本：v{}，请通过前端地址访问。", ruoyiConfig.getName(), ruoyiConfig.getVersion());
   }
 
-  /** 解锁屏幕 */
+  /**
+   * 解锁屏幕
+   *
+   * @param body 请求体，包含当前账号的解锁密码
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PostMapping("/unlockscreen")
   public AjaxResult unlockScreen(@RequestBody Map<String, String> body) {
     String password = body.get("password");

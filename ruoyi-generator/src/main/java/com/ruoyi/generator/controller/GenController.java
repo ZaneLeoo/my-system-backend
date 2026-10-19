@@ -49,7 +49,12 @@ public class GenController extends BaseController {
 
   @Autowired private IGenTableColumnService genTableColumnService;
 
-  /** 查询代码生成列表 */
+  /**
+   * 查询代码生成列表
+   *
+   * @param genTable 代码生成配置筛选条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('tool:gen:list')")
   @GetMapping("/list")
   public TableDataInfo genList(GenTable genTable) {
@@ -58,7 +63,12 @@ public class GenController extends BaseController {
     return getDataTable(list);
   }
 
-  /** 获取代码生成信息 */
+  /**
+   * 获取代码生成信息
+   *
+   * @param tableId 代码生成表配置 ID
+   * @return 表配置、字段列表及关联表信息
+   */
   @PreAuthorize("@ss.hasPermi('tool:gen:query')")
   @GetMapping(value = "/{tableId}")
   public AjaxResult getInfo(@PathVariable Long tableId) {
@@ -72,7 +82,12 @@ public class GenController extends BaseController {
     return success(map);
   }
 
-  /** 查询数据库列表 */
+  /**
+   * 查询数据库列表
+   *
+   * @param genTable 代码生成配置筛选条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('tool:gen:list')")
   @GetMapping("/db/list")
   public TableDataInfo dataList(GenTable genTable) {
@@ -81,7 +96,12 @@ public class GenController extends BaseController {
     return getDataTable(list);
   }
 
-  /** 查询数据表字段列表 */
+  /**
+   * 查询数据表字段列表
+   *
+   * @param tableId 代码生成表配置 ID
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('tool:gen:list')")
   @GetMapping(value = "/column/{tableId}")
   public TableDataInfo columnList(Long tableId) {
@@ -92,7 +112,13 @@ public class GenController extends BaseController {
     return dataInfo;
   }
 
-  /** 导入表结构（保存） */
+  /**
+   * 导入表结构（保存）
+   *
+   * @param tables 以逗号分隔的数据库表名
+   * @param tplWebType 前端生成模板类型，例如 Vue 2 或 Vue 3
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('tool:gen:import')")
   @Log(title = "代码生成", businessType = BusinessType.IMPORT)
   @PostMapping("/importTable")
@@ -105,7 +131,13 @@ public class GenController extends BaseController {
     return success();
   }
 
-  /** 创建表结构（保存） */
+  /**
+   * 创建表结构（保存）
+   *
+   * @param sql 待创建数据表的 SQL，执行范围由代码生成模块校验
+   * @param tplWebType 前端生成模板类型，例如 Vue 2 或 Vue 3
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasRole('admin')")
   @Log(title = "创建表", businessType = BusinessType.OTHER)
   @PostMapping("/createTable")
@@ -136,7 +168,12 @@ public class GenController extends BaseController {
     }
   }
 
-  /** 修改保存代码生成业务 */
+  /**
+   * 修改保存代码生成业务
+   *
+   * @param genTable 待修改的代码生成配置信息及其标识
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('tool:gen:edit')")
   @Log(title = "代码生成", businessType = BusinessType.UPDATE)
   @PutMapping
@@ -146,7 +183,12 @@ public class GenController extends BaseController {
     return success();
   }
 
-  /** 删除代码生成 */
+  /**
+   * 删除代码生成
+   *
+   * @param tableIds 代码生成表配置 ID 集合
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('tool:gen:remove')")
   @Log(title = "代码生成", businessType = BusinessType.DELETE)
   @DeleteMapping("/{tableIds}")
@@ -155,7 +197,13 @@ public class GenController extends BaseController {
     return success();
   }
 
-  /** 预览代码 */
+  /**
+   * 预览代码
+   *
+   * @param tableId 代码生成表配置 ID
+   * @return 各模板对应的生成代码文本
+   * @throws IOException 读写文件或响应流失败时
+   */
   @PreAuthorize("@ss.hasPermi('tool:gen:preview')")
   @GetMapping("/preview/{tableId}")
   public AjaxResult preview(@PathVariable("tableId") Long tableId) throws IOException {
@@ -163,7 +211,13 @@ public class GenController extends BaseController {
     return success(dataMap);
   }
 
-  /** 生成代码（下载方式） */
+  /**
+   * 生成代码（下载方式）
+   *
+   * @param response 用于写入下载文件或响应内容的 HTTP 响应
+   * @param tableName 数据库物理表名
+   * @throws IOException 读写文件或响应流失败时
+   */
   @PreAuthorize("@ss.hasPermi('tool:gen:code')")
   @Log(title = "代码生成", businessType = BusinessType.GENCODE)
   @GetMapping("/download/{tableName}")
@@ -173,7 +227,12 @@ public class GenController extends BaseController {
     genCode(response, data);
   }
 
-  /** 生成代码（自定义路径） */
+  /**
+   * 生成代码（自定义路径）
+   *
+   * @param tableName 数据库物理表名
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('tool:gen:code')")
   @Log(title = "代码生成", businessType = BusinessType.GENCODE)
   @GetMapping("/genCode/{tableName}")
@@ -185,7 +244,12 @@ public class GenController extends BaseController {
     return success();
   }
 
-  /** 同步数据库 */
+  /**
+   * 同步数据库
+   *
+   * @param tableName 数据库物理表名
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('tool:gen:edit')")
   @Log(title = "代码生成", businessType = BusinessType.UPDATE)
   @GetMapping("/synchDb/{tableName}")
@@ -194,7 +258,13 @@ public class GenController extends BaseController {
     return success();
   }
 
-  /** 批量生成代码 */
+  /**
+   * 批量生成代码
+   *
+   * @param response 用于写入下载文件或响应内容的 HTTP 响应
+   * @param tables 以逗号分隔的数据库表名
+   * @throws IOException 读写文件或响应流失败时
+   */
   @PreAuthorize("@ss.hasPermi('tool:gen:code')")
   @Log(title = "代码生成", businessType = BusinessType.GENCODE)
   @GetMapping("/batchGenCode")

@@ -37,7 +37,13 @@ public class CaptchaController {
 
   @Autowired private ISysConfigService configService;
 
-  /** 生成验证码 */
+  /**
+   * 生成验证码
+   *
+   * @param response 用于写入下载文件或响应内容的 HTTP 响应
+   * @return 操作结果，失败时包含具体错误说明
+   * @throws IOException 读写文件或响应流失败时
+   */
   @GetMapping("/captchaImage")
   public AjaxResult getCode(HttpServletResponse response) throws IOException {
     AjaxResult ajax = AjaxResult.success();

@@ -33,21 +33,36 @@ public class ItemController {
     this.categories = categories;
   }
 
-  /** 查询料品分页结果，排序和筛选作用于全部符合条件的数据。 */
+  /**
+   * 查询料品分页结果，排序和筛选作用于全部符合条件的数据。
+   *
+   * @param query 业务筛选、分页及白名单排序条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @GetMapping("/list")
   @PreAuthorize("@ss.hasPermi('masterdata:item:list')")
   public R<PageResult<ItemView>> list(@Valid ItemQuery query) {
     return R.ok(service.list(query));
   }
 
-  /** 查询料品详情。 */
+  /**
+   * 查询料品详情。
+   *
+   * @param id 料品 ID
+   * @return 最新的料品详情及当前版本
+   */
   @GetMapping("/{id}")
   @PreAuthorize("@ss.hasPermi('masterdata:item:query')")
   public R<ItemView> detail(@PathVariable @Positive Long id) {
     return R.ok(service.detail(id));
   }
 
-  /** 新增料品并返回生成的详情。 */
+  /**
+   * 新增料品并返回生成的详情。
+   *
+   * @param request 待新增的料品字段
+   * @return 新增后的料品详情，包含生成的 ID 和审计信息
+   */
   @PostMapping
   @PreAuthorize("@ss.hasPermi('masterdata:item:add')")
   @Log(title = "料品档案", businessType = BusinessType.INSERT)
@@ -55,7 +70,12 @@ public class ItemController {
     return R.ok(service.create(request));
   }
 
-  /** 按当前版本修改料品及启停状态。 */
+  /**
+   * 按当前版本修改料品及启停状态。
+   *
+   * @param request 待修改的料品字段，包含主键和当前版本
+   * @return 操作成功响应，业务数据为空
+   */
   @PutMapping
   @PreAuthorize("@ss.hasPermi('masterdata:item:edit')")
   @Log(title = "料品档案", businessType = BusinessType.UPDATE)
@@ -64,7 +84,13 @@ public class ItemController {
     return R.ok();
   }
 
-  /** 按当前版本逻辑删除料品。 */
+  /**
+   * 按当前版本逻辑删除料品。
+   *
+   * @param id 料品 ID
+   * @param version 读取时的记录版本，用于拒绝过期页面操作
+   * @return 操作成功响应，业务数据为空
+   */
   @DeleteMapping("/{id}")
   @PreAuthorize("@ss.hasPermi('masterdata:item:remove')")
   @Log(title = "料品档案", businessType = BusinessType.DELETE)
@@ -74,7 +100,11 @@ public class ItemController {
     return R.ok();
   }
 
-  /** 料品查询和维护用户可读取分类选项，无需分类维护权限。 */
+  /**
+   * 料品查询和维护用户可读取分类选项，无需分类维护权限。
+   *
+   * @return 分类树选项，保留展示所需的层级关系
+   */
   @GetMapping("/category-options")
   @PreAuthorize(
       "@ss.hasAnyPermi('masterdata:item:list,masterdata:item:query,masterdata:item:add,masterdata:item:edit')")
@@ -82,7 +112,11 @@ public class ItemController {
     return R.ok(categories.tree(null));
   }
 
-  /** 返回完整单位选项，包括停用旧值。 */
+  /**
+   * 返回完整单位选项，包括停用旧值。
+   *
+   * @return 完整单位选项，包含未删除的停用旧值
+   */
   @GetMapping("/unit-options")
   @PreAuthorize(
       "@ss.hasAnyPermi('masterdata:item:list,masterdata:item:query,masterdata:item:add,masterdata:item:edit')")

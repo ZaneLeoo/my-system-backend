@@ -27,14 +27,24 @@ public class LocationController {
     this.service = service;
   }
 
-  /** 查询货位分页结果，排序和筛选作用于全部符合条件的数据。 */
+  /**
+   * 查询货位分页结果，排序和筛选作用于全部符合条件的数据。
+   *
+   * @param query 货位筛选、分页和排序条件，必须指定所属仓库
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @GetMapping("/list")
   @PreAuthorize("@ss.hasPermi('masterdata:location:list')")
   public R<PageResult<LocationView>> list(@Valid LocationQuery query) {
     return R.ok(service.list(query));
   }
 
-  /** 货位维护和参照用户读取所属仓库的必要上下文。 */
+  /**
+   * 货位维护和参照用户读取所属仓库的必要上下文。
+   *
+   * @param warehouseId 所属仓库 ID
+   * @return 所属仓库的 ID、编码、名称、启停状态及货位管理开关
+   */
   @GetMapping("/warehouse-context")
   @PreAuthorize(
       "@ss.hasAnyPermi('masterdata:location:list,masterdata:location:query,masterdata:location:add,masterdata:location:edit,masterdata:location:reference')")
@@ -43,14 +53,24 @@ public class LocationController {
     return R.ok(service.context(warehouseId));
   }
 
-  /** 查询货位详情。 */
+  /**
+   * 查询货位详情。
+   *
+   * @param id 货位 ID
+   * @return 最新的货位详情及当前版本
+   */
   @GetMapping("/{id}")
   @PreAuthorize("@ss.hasPermi('masterdata:location:query')")
   public R<LocationView> detail(@PathVariable @Positive Long id) {
     return R.ok(service.detail(id));
   }
 
-  /** 新增货位并返回生成的详情。 */
+  /**
+   * 新增货位并返回生成的详情。
+   *
+   * @param request 待新增的货位字段
+   * @return 新增后的货位详情，包含生成的 ID 和审计信息
+   */
   @PostMapping
   @PreAuthorize("@ss.hasPermi('masterdata:location:add')")
   @Log(title = "货位", businessType = BusinessType.INSERT)
@@ -58,7 +78,12 @@ public class LocationController {
     return R.ok(service.create(request));
   }
 
-  /** 按当前版本修改货位及启停状态。 */
+  /**
+   * 按当前版本修改货位及启停状态。
+   *
+   * @param request 待修改的货位字段，包含主键和当前版本
+   * @return 操作成功响应，业务数据为空
+   */
   @PutMapping
   @PreAuthorize("@ss.hasPermi('masterdata:location:edit')")
   @Log(title = "货位", businessType = BusinessType.UPDATE)
@@ -67,7 +92,13 @@ public class LocationController {
     return R.ok();
   }
 
-  /** 按当前版本逻辑删除货位。 */
+  /**
+   * 按当前版本逻辑删除货位。
+   *
+   * @param id 货位 ID
+   * @param version 读取时的记录版本，用于拒绝过期页面操作
+   * @return 操作成功响应，业务数据为空
+   */
   @DeleteMapping("/{id}")
   @PreAuthorize("@ss.hasPermi('masterdata:location:remove')")
   @Log(title = "货位", businessType = BusinessType.DELETE)

@@ -26,13 +26,23 @@ public class ArrivalLineReferenceController {
     this.service = service;
   }
 
-  /** 查询同一供应商下可新增到货的已审核到货单行。 */
+  /**
+   * 查询同一供应商下可新增到货的已审核到货单行。
+   *
+   * @param query 业务筛选、分页及白名单排序条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @GetMapping
   public R<PageResult<ArrivalLineReference>> list(@Valid ArrivalLineReferenceQuery query) {
     return R.ok(service.references(query));
   }
 
-  /** 确认前重新读取来源行额度，不执行占用。 */
+  /**
+   * 确认前重新读取来源行额度，不执行占用。
+   *
+   * @param ids 批量回显的不同记录 ID，每次最多 100 个
+   * @return 匹配的未删除记录，包含允许回显的停用旧值
+   */
   @GetMapping("/resolve")
   public R<List<ArrivalLineReference>> resolve(
       @RequestParam @NotEmpty @Size(max = ReceiptRules.MAX_REFERENCE_IDS)

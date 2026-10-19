@@ -19,14 +19,30 @@ public class QuerySearchController {
     this.service = service;
   }
 
-  /** 料品元数据驱动的分页查询。 */
+  /**
+   * 按料品当前发布配置执行分页查询。
+   *
+   * <p>需要料品列表权限；普通条件、分类后代条件和排序均由查询框架校验，结果继续补齐分类路径及单位名称。
+   *
+   * @param request 分页、发布配置版本、排序及 AND/OR 条件树
+   * @return 当前页记录及全部匹配记录的总数
+   * @throws com.ruoyi.common.exception.ServiceException 参数或字段不合法、配置失效或发布版本过期时
+   */
   @PostMapping("/masterdata/item/search")
   @PreAuthorize("@ss.hasPermi('masterdata:item:list')")
   public R<PageResult<ItemView>> items(@RequestBody SearchRequest request) {
     return R.ok(service.search("masterdata.item", request, ItemView.class));
   }
 
-  /** 采购订单主明细条件分页查询。 */
+  /**
+   * 按采购订单当前发布配置执行主明细条件查询。
+   *
+   * <p>需要订单列表权限；明细条件通过 EXISTS/NOT EXISTS 筛选整单，分页单位为订单，结果保留原有到货和入库执行进度。
+   *
+   * @param request 分页、发布配置版本、排序及 AND/OR 条件树
+   * @return 当前页记录及全部匹配记录的总数
+   * @throws com.ruoyi.common.exception.ServiceException 条件不合法、配置失效或发布版本过期时
+   */
   @PostMapping("/purchase/order/search")
   @PreAuthorize("@ss.hasPermi('purchase:order:list')")
   public R<PageResult<OrderView>> orders(@RequestBody SearchRequest request) {

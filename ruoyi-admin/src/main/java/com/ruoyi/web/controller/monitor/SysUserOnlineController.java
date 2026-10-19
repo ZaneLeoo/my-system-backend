@@ -35,6 +35,13 @@ public class SysUserOnlineController extends BaseController {
 
   @Autowired private RedisCache redisCache;
 
+  /**
+   * 按登录 IP 和账号查询当前在线用户。
+   *
+   * @param ipaddr 登录 IP 筛选条件，可为空
+   * @param userName 用户登录账号
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('monitor:online:list')")
   @GetMapping("/list")
   public TableDataInfo list(String ipaddr, String userName) {
@@ -57,7 +64,12 @@ public class SysUserOnlineController extends BaseController {
     return getDataTable(userOnlineList);
   }
 
-  /** 强退用户 */
+  /**
+   * 强退用户
+   *
+   * @param tokenId 待强制下线会话的令牌标识
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('monitor:online:forceLogout')")
   @Log(title = "在线用户", businessType = BusinessType.FORCE)
   @DeleteMapping("/{tokenId}")

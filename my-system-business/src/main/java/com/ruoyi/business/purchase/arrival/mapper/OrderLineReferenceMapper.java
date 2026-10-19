@@ -13,7 +13,13 @@ public interface OrderLineReferenceMapper {
   String ELIGIBLE =
       " WHERE o.del_flag='0' AND l.del_flag='0' AND o.status='APPROVED' AND l.quantity>l.pending_arrival_quantity+l.arrived_quantity ";
 
-  /** 分页条件全部使用绑定参数，排序由静态 SQL 分支选择。 */
+  /**
+   * 分页条件全部使用绑定参数，排序由静态 SQL 分支选择。
+   *
+   * @param query 业务筛选、分页及白名单排序条件
+   * @param keyword 已转义的料品编码、名称包含匹配条件
+   * @return 符合条件的采购订单列表
+   */
   @Select({
     "<script>",
     FIELDS,
@@ -28,7 +34,12 @@ public interface OrderLineReferenceMapper {
   List<OrderLineReference> search(
       @Param("query") OrderLineReferenceQuery query, @Param("keyword") String keyword);
 
-  /** 确认前复核最多一百个来源行，已关闭或无可用额度的行不再返回。 */
+  /**
+   * 确认前复核最多一百个来源行，已关闭或无可用额度的行不再返回。
+   *
+   * @param ids 需要批量回显的记录 ID 集合
+   * @return 匹配的未删除记录，包含允许回显的停用旧值
+   */
   @Select({
     "<script>",
     FIELDS,

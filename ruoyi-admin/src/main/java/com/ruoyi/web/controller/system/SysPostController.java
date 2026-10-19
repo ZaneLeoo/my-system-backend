@@ -32,7 +32,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class SysPostController extends BaseController {
   @Autowired private ISysPostService postService;
 
-  /** 获取岗位列表 */
+  /**
+   * 获取岗位列表
+   *
+   * @param post 岗位筛选条件
+   * @return 当前页记录及全部匹配记录的总数
+   */
   @PreAuthorize("@ss.hasPermi('system:post:list')")
   @GetMapping("/list")
   public TableDataInfo list(SysPost post) {
@@ -41,6 +46,12 @@ public class SysPostController extends BaseController {
     return getDataTable(list);
   }
 
+  /**
+   * 按筛选条件导出岗位。
+   *
+   * @param response 用于写入下载文件或响应内容的 HTTP 响应
+   * @param post 岗位筛选条件
+   */
   @Log(title = "岗位管理", businessType = BusinessType.EXPORT)
   @PreAuthorize("@ss.hasPermi('system:post:export')")
   @PostMapping("/export")
@@ -50,14 +61,24 @@ public class SysPostController extends BaseController {
     util.exportExcel(response, list, "岗位数据");
   }
 
-  /** 根据岗位编号获取详细信息 */
+  /**
+   * 根据岗位编号获取详细信息
+   *
+   * @param postId 岗位 ID
+   * @return 匹配的记录详情
+   */
   @PreAuthorize("@ss.hasPermi('system:post:query')")
   @GetMapping(value = "/{postId}")
   public AjaxResult getInfo(@PathVariable Long postId) {
     return success(postService.selectPostById(postId));
   }
 
-  /** 新增岗位 */
+  /**
+   * 新增岗位
+   *
+   * @param post 待新增的岗位信息
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:post:add')")
   @Log(title = "岗位管理", businessType = BusinessType.INSERT)
   @PostMapping
@@ -71,7 +92,12 @@ public class SysPostController extends BaseController {
     return toAjax(postService.insertPost(post));
   }
 
-  /** 修改岗位 */
+  /**
+   * 修改岗位
+   *
+   * @param post 待修改的岗位信息及其标识
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:post:edit')")
   @Log(title = "岗位管理", businessType = BusinessType.UPDATE)
   @PutMapping
@@ -85,7 +111,12 @@ public class SysPostController extends BaseController {
     return toAjax(postService.updatePost(post));
   }
 
-  /** 删除岗位 */
+  /**
+   * 删除岗位
+   *
+   * @param postIds 岗位 ID 集合
+   * @return 操作结果，失败时包含具体错误说明
+   */
   @PreAuthorize("@ss.hasPermi('system:post:remove')")
   @Log(title = "岗位管理", businessType = BusinessType.DELETE)
   @DeleteMapping("/{postIds}")
@@ -93,7 +124,11 @@ public class SysPostController extends BaseController {
     return toAjax(postService.deletePostByIds(postIds));
   }
 
-  /** 获取岗位选择框列表 */
+  /**
+   * 获取岗位选择框列表
+   *
+   * @return 操作结果或选项列表
+   */
   @GetMapping("/optionselect")
   public AjaxResult optionselect() {
     List<SysPost> posts = postService.selectPostAll();
