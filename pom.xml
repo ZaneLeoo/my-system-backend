@@ -40,6 +40,11 @@
         <dependencies>
             <dependency>
                 <groupId>com.ruoyi</groupId>
+                <artifactId>my-system-query</artifactId>
+                <version>${ruoyi.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ruoyi</groupId>
                 <artifactId>my-system-business</artifactId>
                 <version>${ruoyi.version}</version>
             </dependency>
@@ -181,6 +186,7 @@
     </dependencyManagement>
 
     <modules>
+        <module>my-system-query</module>
         <module>my-system-business</module>
         <module>ruoyi-admin</module>
         <module>ruoyi-framework</module>

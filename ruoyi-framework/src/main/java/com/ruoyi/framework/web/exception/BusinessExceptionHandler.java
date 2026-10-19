@@ -19,7 +19,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 /** 新业务 Controller 统一返回 R，若依原有 Controller 继续使用原异常处理器。 */
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(basePackages = "com.ruoyi.business")
+@RestControllerAdvice(basePackages = {"com.ruoyi.business", "com.ruoyi.query"})
 public class BusinessExceptionHandler {
   private static final Logger log = LoggerFactory.getLogger(BusinessExceptionHandler.class);
 

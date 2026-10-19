@@ -35,6 +35,9 @@ server:
 logging:
   level:
     com.ruoyi: debug
+    com.ruoyi.query.mapper: warn
+    com.ruoyi.business.query.mapper: warn
+    com.ruoyi.business.masterdata.item.mapper.ItemMapper.selectSearchViews: warn
     org.springframework: warn
 
 # 用户配置

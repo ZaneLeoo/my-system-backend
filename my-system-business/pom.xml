@@ -11,6 +11,10 @@
     <dependencies>
         <dependency>
             <groupId>com.ruoyi</groupId>
+            <artifactId>my-system-query</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.ruoyi</groupId>
             <artifactId>ruoyi-common</artifactId>
         </dependency>
         <dependency>
