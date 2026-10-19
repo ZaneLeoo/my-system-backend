@@ -4,109 +4,39 @@ import com.baomidou.mybatisplus.annotation.*;
 import com.ruoyi.common.core.domain.AuditEntity;
 import java.time.*;
 import java.util.*;
+import lombok.Getter;
+import lombok.Setter;
 
 /** MetadataTable 数据约定。 */
+@Getter
+@Setter
 @TableName("sys_metadata_table")
 public class MetadataTable extends AuditEntity {
+  /** 元数据表目录 ID。 */
   @TableId(type = IdType.AUTO)
   private Long tableId;
 
+  /** 当前应用使用的数据库名称。 */
   private String schemaName;
+
+  /** 开发者登记的数据库物理表名。 */
   private String tableName;
+
+  /** 数据库原始表注释，中文显示名称可单独维护。 */
   private String tableComment;
+
+  /** 中文显示名称，可独立于数据库原始注释维护。 */
   private String displayName;
+
+  /** 有序物理字段结构的 SHA-256 签名，用于确认同步内容。 */
   private String structureSignature;
+
+  /** 对应的物理表或字段是否仍有效；失效目录保留以追踪配置引用。 */
   private Boolean available;
+
+  /** 最近一次导入或同步目录的北京时间。 */
   private LocalDateTime synchronizedTime;
+
+  /** 目录编辑版本，用于同步及名称维护的并发检查。 */
   private Integer version;
-
-  /** 返回 tableId。 */
-  public Long getTableId() {
-    return tableId;
-  }
-
-  /** 设置 tableId。 */
-  public void setTableId(Long value) {
-    this.tableId = value;
-  }
-
-  /** 返回 schemaName。 */
-  public String getSchemaName() {
-    return schemaName;
-  }
-
-  /** 设置 schemaName。 */
-  public void setSchemaName(String value) {
-    this.schemaName = value;
-  }
-
-  /** 返回 tableName。 */
-  public String getTableName() {
-    return tableName;
-  }
-
-  /** 设置 tableName。 */
-  public void setTableName(String value) {
-    this.tableName = value;
-  }
-
-  /** 返回 tableComment。 */
-  public String getTableComment() {
-    return tableComment;
-  }
-
-  /** 设置 tableComment。 */
-  public void setTableComment(String value) {
-    this.tableComment = value;
-  }
-
-  /** 返回 displayName。 */
-  public String getDisplayName() {
-    return displayName;
-  }
-
-  /** 设置 displayName。 */
-  public void setDisplayName(String value) {
-    this.displayName = value;
-  }
-
-  /** 返回 structureSignature。 */
-  public String getStructureSignature() {
-    return structureSignature;
-  }
-
-  /** 设置 structureSignature。 */
-  public void setStructureSignature(String value) {
-    this.structureSignature = value;
-  }
-
-  /** 返回 available。 */
-  public Boolean getAvailable() {
-    return available;
-  }
-
-  /** 设置 available。 */
-  public void setAvailable(Boolean value) {
-    this.available = value;
-  }
-
-  /** 返回 synchronizedTime。 */
-  public LocalDateTime getSynchronizedTime() {
-    return synchronizedTime;
-  }
-
-  /** 设置 synchronizedTime。 */
-  public void setSynchronizedTime(LocalDateTime value) {
-    this.synchronizedTime = value;
-  }
-
-  /** 返回 version。 */
-  public Integer getVersion() {
-    return version;
-  }
-
-  /** 设置 version。 */
-  public void setVersion(Integer value) {
-    this.version = value;
-  }
 }

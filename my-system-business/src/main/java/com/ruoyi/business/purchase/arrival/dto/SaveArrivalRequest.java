@@ -6,8 +6,12 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
 /** 整单草稿保存参数 */
+@Getter
+@Setter
 public class SaveArrivalRequest {
   /** 已有到货单 ID。 */
   @Positive private Long arrivalId;
@@ -37,83 +41,13 @@ public class SaveArrivalRequest {
   @Size(max = ArrivalRules.MAX_LINES)
   private List<@NotNull @Valid ArrivalLineInput> lines;
 
-  /** 返回已有到货单 ID。 */
-  public Long getArrivalId() {
-    return arrivalId;
-  }
-
-  /** 设置已有到货单 ID。 */
-  public void setArrivalId(Long arrivalId) {
-    this.arrivalId = arrivalId;
-  }
-
-  /** 返回旧页面版本。 */
-  public Integer getVersion() {
-    return version;
-  }
-
-  /** 设置旧页面版本。 */
-  public void setVersion(Integer version) {
-    this.version = version;
-  }
-
-  /** 返回实际到货日期。 */
-  public LocalDate getArrivalDate() {
-    return arrivalDate;
-  }
-
-  /** 设置实际到货日期。 */
-  public void setArrivalDate(LocalDate arrivalDate) {
-    this.arrivalDate = arrivalDate;
-  }
-
-  /** 返回供应商 ID。 */
-  public Long getSupplierId() {
-    return supplierId;
-  }
-
-  /** 设置供应商 ID。 */
-  public void setSupplierId(Long supplierId) {
-    this.supplierId = supplierId;
-  }
-
-  /** 返回预计入库仓库 ID。 */
-  public Long getWarehouseId() {
-    return warehouseId;
-  }
-
-  /** 设置预计入库仓库 ID。 */
-  public void setWarehouseId(Long warehouseId) {
-    this.warehouseId = warehouseId;
-  }
-
-  /** 返回供应商送货单号。 */
-  public String getSupplierDeliveryNo() {
-    return supplierDeliveryNo;
-  }
-
   /** 设置供应商送货单号。 */
   public void setSupplierDeliveryNo(String supplierDeliveryNo) {
     this.supplierDeliveryNo = supplierDeliveryNo == null ? "" : supplierDeliveryNo.strip();
   }
 
-  /** 返回备注。 */
-  public String getRemark() {
-    return remark;
-  }
-
   /** 设置备注。 */
   public void setRemark(String remark) {
     this.remark = remark == null ? "" : remark.strip();
-  }
-
-  /** 返回到货明细。 */
-  public List<@NotNull @Valid ArrivalLineInput> getLines() {
-    return lines;
-  }
-
-  /** 设置到货明细。 */
-  public void setLines(List<@NotNull @Valid ArrivalLineInput> lines) {
-    this.lines = lines;
   }
 }

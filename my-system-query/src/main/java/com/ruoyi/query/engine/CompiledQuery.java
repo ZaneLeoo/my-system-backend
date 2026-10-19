@@ -2,13 +2,23 @@ package com.ruoyi.query.engine;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import java.util.*;
+import lombok.Getter;
 
 /** 仅由引擎创建的 SQL 结构和值，绑定交给 MyBatis-Plus。 */
 public final class CompiledQuery {
-  private final String sql;
-  private final List<Object> parameters;
+  /** 编译器生成的受控 SQL 条件模板，参数值单独绑定。 */
+  @Getter private final String sql;
+
+  /** 按占位符顺序保存的绑定值，不得写入普通查询日志。 */
+  @Getter private final List<Object> parameters;
+
+  /** 已验证的主表排序列，包含受控表别名。 */
   private final String sortColumn;
+
+  /** 是否按主排序字段升序排列。 */
   private final boolean ascending;
+
+  /** 主表主键列，用于追加稳定排序。 */
   private final String primaryKey;
 
   /** 保存编译结果，不包含客户端 SQL。 */
@@ -31,15 +41,5 @@ public final class CompiledQuery {
         .apply(sql, parameters.toArray())
         .orderBy(true, ascending, sortColumn)
         .orderByAsc(primaryKey);
-  }
-
-  /** 返回 SQL 模板供安全验证。 */
-  public String getSql() {
-    return sql;
-  }
-
-  /** 返回绑定值供测试和诊断，日志不得记录此列表。 */
-  public List<Object> getParameters() {
-    return parameters;
   }
 }

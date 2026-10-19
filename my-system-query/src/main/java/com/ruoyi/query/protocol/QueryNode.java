@@ -3,106 +3,37 @@ package com.ruoyi.query.protocol;
 import com.baomidou.mybatisplus.annotation.*;
 import java.time.*;
 import java.util.*;
+import lombok.Getter;
+import lombok.Setter;
 
 /** QueryNode 数据约定。 */
+@Getter
+@Setter
 public class QueryNode {
+  /** 条件节点类型：condition 普通条件、group 逻辑组、relation 关联组。 */
   private String type;
+
+  /** 组内组合方式，取值为 AND 或 OR。 */
   private String logic;
+
+  /** 当前查询配置中的稳定字段标识，不是物理列名。 */
   private String field;
+
+  /** 当前字段允许的运算符，例如 eq、like 或 between。 */
   private String op;
+
+  /** 单值、区间起始值或集合值；小数使用十进制字符串。 */
   private Object value;
+
+  /** 区间结束值，仅 between 等明确支持双值的操作使用。 */
   private Object value2;
+
+  /** 适配器登记的关联来源标识，仅关联组使用。 */
   private String relation;
+
+  /** 关联判断方式，取值为 EXISTS 或 NOT_EXISTS。 */
   private String mode;
+
+  /** 逻辑组或关联组的子条件，顺序保留原始条件树结构。 */
   private List<QueryNode> children = new ArrayList<>();
-
-  /** 返回 type。 */
-  public String getType() {
-    return type;
-  }
-
-  /** 设置 type。 */
-  public void setType(String value) {
-    this.type = value;
-  }
-
-  /** 返回 logic。 */
-  public String getLogic() {
-    return logic;
-  }
-
-  /** 设置 logic。 */
-  public void setLogic(String value) {
-    this.logic = value;
-  }
-
-  /** 返回 field。 */
-  public String getField() {
-    return field;
-  }
-
-  /** 设置 field。 */
-  public void setField(String value) {
-    this.field = value;
-  }
-
-  /** 返回 op。 */
-  public String getOp() {
-    return op;
-  }
-
-  /** 设置 op。 */
-  public void setOp(String value) {
-    this.op = value;
-  }
-
-  /** 返回 value。 */
-  public Object getValue() {
-    return value;
-  }
-
-  /** 设置 value。 */
-  public void setValue(Object value) {
-    this.value = value;
-  }
-
-  /** 返回 value2。 */
-  public Object getValue2() {
-    return value2;
-  }
-
-  /** 设置 value2。 */
-  public void setValue2(Object value) {
-    this.value2 = value;
-  }
-
-  /** 返回 relation。 */
-  public String getRelation() {
-    return relation;
-  }
-
-  /** 设置 relation。 */
-  public void setRelation(String value) {
-    this.relation = value;
-  }
-
-  /** 返回 mode。 */
-  public String getMode() {
-    return mode;
-  }
-
-  /** 设置 mode。 */
-  public void setMode(String value) {
-    this.mode = value;
-  }
-
-  /** 返回 children。 */
-  public List<QueryNode> getChildren() {
-    return children;
-  }
-
-  /** 设置 children。 */
-  public void setChildren(List<QueryNode> value) {
-    this.children = value;
-  }
 }

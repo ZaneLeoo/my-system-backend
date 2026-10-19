@@ -5,155 +5,53 @@ import com.ruoyi.common.core.domain.AuditEntity;
 import java.time.*;
 import java.util.*;
 import java.util.regex.Matcher;
+import lombok.Getter;
+import lombok.Setter;
 
 /** MetadataColumn 数据约定。 */
+@Getter
+@Setter
 @TableName("sys_metadata_column")
 public class MetadataColumn extends AuditEntity {
+  /** 元数据字段 ID，用于校验字段来源及结构变化。 */
   @TableId(type = IdType.AUTO)
   private Long columnId;
 
+  /** 所属表目录 ID。 */
   private Long tableId;
+
+  /** 数据库中的物理字段名。 */
   private String columnName;
+
+  /** 数据库原始字段注释，结构同步时读取。 */
   private String columnComment;
+
+  /** 中文显示名称，可独立于数据库原始注释维护。 */
   private String displayName;
+
+  /** 查询框架识别的逻辑类型，例如 STRING、INTEGER 或 DECIMAL。 */
   private String dataType;
+
+  /** 数据库完整物理类型，例如 varchar(64) 或 decimal(20,2)。 */
   private String columnType;
+
+  /** 文本字段的最大字符长度，非文本字段可为空。 */
   private Long maxLength;
+
+  /** 小数字段允许的小数位数，非小数字段可为空。 */
   private Integer numericScale;
+
+  /** 数据库是否允许该字段为 NULL，决定能否使用空值运算符。 */
   private Boolean nullable;
+
+  /** 是否为数据库主键字段。 */
   private Boolean primaryKey;
+
+  /** 字段在数据库表中的物理顺序，从 1 开始。 */
   private Integer ordinalPosition;
+
+  /** 对应的物理表或字段是否仍有效；失效目录保留以追踪配置引用。 */
   private Boolean available;
-
-  /** 返回 columnId。 */
-  public Long getColumnId() {
-    return columnId;
-  }
-
-  /** 设置 columnId。 */
-  public void setColumnId(Long value) {
-    this.columnId = value;
-  }
-
-  /** 返回 tableId。 */
-  public Long getTableId() {
-    return tableId;
-  }
-
-  /** 设置 tableId。 */
-  public void setTableId(Long value) {
-    this.tableId = value;
-  }
-
-  /** 返回 columnName。 */
-  public String getColumnName() {
-    return columnName;
-  }
-
-  /** 设置 columnName。 */
-  public void setColumnName(String value) {
-    this.columnName = value;
-  }
-
-  /** 返回 columnComment。 */
-  public String getColumnComment() {
-    return columnComment;
-  }
-
-  /** 设置 columnComment。 */
-  public void setColumnComment(String value) {
-    this.columnComment = value;
-  }
-
-  /** 返回 displayName。 */
-  public String getDisplayName() {
-    return displayName;
-  }
-
-  /** 设置 displayName。 */
-  public void setDisplayName(String value) {
-    this.displayName = value;
-  }
-
-  /** 返回 dataType。 */
-  public String getDataType() {
-    return dataType;
-  }
-
-  /** 设置 dataType。 */
-  public void setDataType(String value) {
-    this.dataType = value;
-  }
-
-  /** 返回 columnType。 */
-  public String getColumnType() {
-    return columnType;
-  }
-
-  /** 设置 columnType。 */
-  public void setColumnType(String value) {
-    this.columnType = value;
-  }
-
-  /** 返回 maxLength。 */
-  public Long getMaxLength() {
-    return maxLength;
-  }
-
-  /** 设置 maxLength。 */
-  public void setMaxLength(Long value) {
-    this.maxLength = value;
-  }
-
-  /** 返回 numericScale。 */
-  public Integer getNumericScale() {
-    return numericScale;
-  }
-
-  /** 设置 numericScale。 */
-  public void setNumericScale(Integer value) {
-    this.numericScale = value;
-  }
-
-  /** 返回 nullable。 */
-  public Boolean getNullable() {
-    return nullable;
-  }
-
-  /** 设置 nullable。 */
-  public void setNullable(Boolean value) {
-    this.nullable = value;
-  }
-
-  /** 返回 primaryKey。 */
-  public Boolean getPrimaryKey() {
-    return primaryKey;
-  }
-
-  /** 设置 primaryKey。 */
-  public void setPrimaryKey(Boolean value) {
-    this.primaryKey = value;
-  }
-
-  /** 返回 ordinalPosition。 */
-  public Integer getOrdinalPosition() {
-    return ordinalPosition;
-  }
-
-  /** 设置 ordinalPosition。 */
-  public void setOrdinalPosition(Integer value) {
-    this.ordinalPosition = value;
-  }
-
-  /** 返回 available。 */
-  public Boolean getAvailable() {
-    return available;
-  }
-
-  /** 设置 available。 */
-  public void setAvailable(Boolean value) {
-    this.available = value;
-  }
 
   /** 从完整物理类型读取十进制精度，避免单独存储后与数据库类型不一致。 */
   public Integer getNumericPrecision() {

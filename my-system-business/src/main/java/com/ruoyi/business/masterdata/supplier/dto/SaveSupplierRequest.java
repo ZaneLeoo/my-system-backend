@@ -6,8 +6,12 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
 /** 供应商保存参数，不接受客户端审计与删除标记。 */
+@Getter
+@Setter
 public class SaveSupplierRequest {
   /** 供应商 ID，新增时不指定。 */
   @Positive private Long supplierId;
@@ -49,29 +53,9 @@ public class SaveSupplierRequest {
   /** 编辑版本号。 */
   @PositiveOrZero private Integer version;
 
-  /** 返回供应商 ID，新增时不指定。 */
-  public Long getSupplierId() {
-    return supplierId;
-  }
-
-  /** 设置供应商 ID，新增时不指定。 */
-  public void setSupplierId(Long supplierId) {
-    this.supplierId = supplierId;
-  }
-
-  /** 返回供应商编码。 */
-  public String getSupplierCode() {
-    return supplierCode;
-  }
-
   /** 设置供应商编码。 */
   public void setSupplierCode(String supplierCode) {
     this.supplierCode = supplierCode == null ? null : supplierCode.strip();
-  }
-
-  /** 返回供应商名称。 */
-  public String getSupplierName() {
-    return supplierName;
   }
 
   /** 设置供应商名称。 */
@@ -79,19 +63,9 @@ public class SaveSupplierRequest {
     this.supplierName = supplierName == null ? null : supplierName.strip();
   }
 
-  /** 返回简称。 */
-  public String getShortName() {
-    return shortName;
-  }
-
   /** 设置简称。 */
   public void setShortName(String shortName) {
     this.shortName = shortName == null ? "" : shortName.strip();
-  }
-
-  /** 返回主要联系人。 */
-  public String getContactName() {
-    return contactName;
   }
 
   /** 设置主要联系人。 */
@@ -99,19 +73,9 @@ public class SaveSupplierRequest {
     this.contactName = contactName == null ? "" : contactName.strip();
   }
 
-  /** 返回联系电话。 */
-  public String getContactPhone() {
-    return contactPhone;
-  }
-
   /** 设置联系电话。 */
   public void setContactPhone(String contactPhone) {
     this.contactPhone = contactPhone == null ? "" : contactPhone.strip();
-  }
-
-  /** 返回地址。 */
-  public String getAddress() {
-    return address;
   }
 
   /** 设置地址。 */
@@ -119,33 +83,8 @@ public class SaveSupplierRequest {
     this.address = address == null ? "" : address.strip();
   }
 
-  /** 返回启停状态。 */
-  public EnableStatus getStatus() {
-    return status;
-  }
-
-  /** 设置启停状态。 */
-  public void setStatus(EnableStatus status) {
-    this.status = status;
-  }
-
-  /** 返回备注。 */
-  public String getRemark() {
-    return remark;
-  }
-
   /** 设置备注。 */
   public void setRemark(String remark) {
     this.remark = remark == null ? "" : remark.strip();
-  }
-
-  /** 返回编辑版本号。 */
-  public Integer getVersion() {
-    return version;
-  }
-
-  /** 设置编辑版本号。 */
-  public void setVersion(Integer version) {
-    this.version = version;
   }
 }

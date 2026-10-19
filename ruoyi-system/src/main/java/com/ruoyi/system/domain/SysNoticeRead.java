@@ -1,6 +1,8 @@
 package com.ruoyi.system.domain;
 
 import java.util.Date;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
@@ -9,6 +11,8 @@ import org.apache.commons.lang3.builder.ToStringStyle;
  *
  * @author ruoyi
  */
+@Getter
+@Setter
 public class SysNoticeRead {
   /** 主键 */
   private Long readId;
@@ -21,38 +25,6 @@ public class SysNoticeRead {
 
   /** 阅读时间 */
   private Date readTime;
-
-  public Long getReadId() {
-    return readId;
-  }
-
-  public void setReadId(Long readId) {
-    this.readId = readId;
-  }
-
-  public Long getNoticeId() {
-    return noticeId;
-  }
-
-  public void setNoticeId(Long noticeId) {
-    this.noticeId = noticeId;
-  }
-
-  public Long getUserId() {
-    return userId;
-  }
-
-  public void setUserId(Long userId) {
-    this.userId = userId;
-  }
-
-  public Date getReadTime() {
-    return readTime;
-  }
-
-  public void setReadTime(Date readTime) {
-    this.readTime = readTime;
-  }
 
   @Override
   public String toString() {

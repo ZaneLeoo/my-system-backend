@@ -1,12 +1,16 @@
 package com.ruoyi.system.domain;
 
 import com.ruoyi.common.utils.StringUtils;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * 缓存信息
  *
  * @author ruoyi
  */
+@Getter
+@Setter
 public class SysCache {
   /** 缓存名称 */
   private String cacheName = "";
@@ -31,37 +35,5 @@ public class SysCache {
     this.cacheName = StringUtils.replace(cacheName, ":", "");
     this.cacheKey = StringUtils.replace(cacheKey, cacheName, "");
     this.cacheValue = cacheValue;
-  }
-
-  public String getCacheName() {
-    return cacheName;
-  }
-
-  public void setCacheName(String cacheName) {
-    this.cacheName = cacheName;
-  }
-
-  public String getCacheKey() {
-    return cacheKey;
-  }
-
-  public void setCacheKey(String cacheKey) {
-    this.cacheKey = cacheKey;
-  }
-
-  public String getCacheValue() {
-    return cacheValue;
-  }
-
-  public void setCacheValue(String cacheValue) {
-    this.cacheValue = cacheValue;
-  }
-
-  public String getRemark() {
-    return remark;
-  }
-
-  public void setRemark(String remark) {
-    this.remark = remark;
   }
 }

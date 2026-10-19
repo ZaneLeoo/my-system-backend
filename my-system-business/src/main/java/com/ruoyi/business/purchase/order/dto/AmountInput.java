@@ -2,8 +2,12 @@ package com.ruoyi.business.purchase.order.dto;
 
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
+import lombok.Getter;
+import lombok.Setter;
 
 /** 金额计算输入，单价仅接受当前口径的一种价格。 */
+@Getter
+@Setter
 public class AmountInput {
   /** 数量。 */
   @NotNull
@@ -23,34 +27,4 @@ public class AmountInput {
   @DecimalMax("100")
   @Digits(integer = 3, fraction = 2)
   private BigDecimal taxRate;
-
-  /** 返回数量。 */
-  public BigDecimal getQuantity() {
-    return quantity;
-  }
-
-  /** 设置数量。 */
-  public void setQuantity(BigDecimal quantity) {
-    this.quantity = quantity;
-  }
-
-  /** 返回所选计价口径的原始单价。 */
-  public BigDecimal getUnitPrice() {
-    return unitPrice;
-  }
-
-  /** 设置所选计价口径的原始单价。 */
-  public void setUnitPrice(BigDecimal unitPrice) {
-    this.unitPrice = unitPrice;
-  }
-
-  /** 返回税率百分数。 */
-  public BigDecimal getTaxRate() {
-    return taxRate;
-  }
-
-  /** 设置税率百分数。 */
-  public void setTaxRate(BigDecimal taxRate) {
-    this.taxRate = taxRate;
-  }
 }

@@ -11,6 +11,8 @@ import java.net.UnknownHostException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
+import lombok.Getter;
+import lombok.Setter;
 import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
 import oshi.hardware.CentralProcessor.TickType;
@@ -26,7 +28,10 @@ import oshi.util.Util;
  *
  * @author ruoyi
  */
+@Getter
+@Setter
 public class Server {
+  /** 采样 CPU 使用率前等待的毫秒数。 */
   private static final int OSHI_WAIT_SECOND = 1000;
 
   /** CPU相关信息 */
@@ -44,42 +49,7 @@ public class Server {
   /** 磁盘相关信息 */
   private List<SysFile> sysFiles = new LinkedList<SysFile>();
 
-  public Cpu getCpu() {
-    return cpu;
-  }
-
-  public void setCpu(Cpu cpu) {
-    this.cpu = cpu;
-  }
-
-  public Mem getMem() {
-    return mem;
-  }
-
-  public void setMem(Mem mem) {
-    this.mem = mem;
-  }
-
-  public Jvm getJvm() {
-    return jvm;
-  }
-
-  public void setJvm(Jvm jvm) {
-    this.jvm = jvm;
-  }
-
-  public Sys getSys() {
-    return sys;
-  }
-
-  public void setSys(Sys sys) {
-    this.sys = sys;
-  }
-
-  public List<SysFile> getSysFiles() {
-    return sysFiles;
-  }
-
+  /** 设置磁盘列表；保留此重载，避免私有采样方法使 Lombok 跳过属性 Setter。 */
   public void setSysFiles(List<SysFile> sysFiles) {
     this.sysFiles = sysFiles;
   }

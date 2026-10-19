@@ -1,16 +1,35 @@
 package com.ruoyi.query.metadata;
 
 import java.time.LocalDateTime;
+import lombok.Getter;
+import lombok.Setter;
 
 /** 数据目录列表投影，接入状态实时来自查询适配器，不持久化到物理目录。 */
+@Getter
+@Setter
 public class MetadataTableView {
+  /** 元数据表目录 ID。 */
   private Long tableId;
+
+  /** 开发者登记的数据库物理表名。 */
   private String tableName;
+
+  /** 数据库原始表注释，中文显示名称可单独维护。 */
   private String tableComment;
+
+  /** 中文显示名称，可独立于数据库原始注释维护。 */
   private String displayName;
+
+  /** 对应的物理表或字段是否仍有效；失效目录保留以追踪配置引用。 */
   private Boolean available;
+
+  /** 最近一次导入或同步目录的北京时间。 */
   private LocalDateTime synchronizedTime;
+
+  /** 目录当前编辑版本。 */
   private Integer version;
+
+  /** 该表是否已作为某个后端查询适配器的受控来源。 */
   private boolean queryRegistered;
 
   /** 将目录实体和独立查询能力组合为管理页投影。 */
@@ -25,85 +44,5 @@ public class MetadataTableView {
     view.setVersion(table.getVersion());
     view.setQueryRegistered(queryRegistered);
     return view;
-  }
-
-  /** 返回目录 ID。 */
-  public Long getTableId() {
-    return tableId;
-  }
-
-  /** 设置目录 ID。 */
-  public void setTableId(Long tableId) {
-    this.tableId = tableId;
-  }
-
-  /** 返回物理表名。 */
-  public String getTableName() {
-    return tableName;
-  }
-
-  /** 设置物理表名。 */
-  public void setTableName(String tableName) {
-    this.tableName = tableName;
-  }
-
-  /** 返回原始表注释。 */
-  public String getTableComment() {
-    return tableComment;
-  }
-
-  /** 设置原始表注释。 */
-  public void setTableComment(String tableComment) {
-    this.tableComment = tableComment;
-  }
-
-  /** 返回中文目录名称。 */
-  public String getDisplayName() {
-    return displayName;
-  }
-
-  /** 设置中文目录名称。 */
-  public void setDisplayName(String displayName) {
-    this.displayName = displayName;
-  }
-
-  /** 返回目录结构是否有效。 */
-  public Boolean getAvailable() {
-    return available;
-  }
-
-  /** 设置目录结构是否有效。 */
-  public void setAvailable(Boolean available) {
-    this.available = available;
-  }
-
-  /** 返回最近同步时间。 */
-  public LocalDateTime getSynchronizedTime() {
-    return synchronizedTime;
-  }
-
-  /** 设置最近同步时间。 */
-  public void setSynchronizedTime(LocalDateTime synchronizedTime) {
-    this.synchronizedTime = synchronizedTime;
-  }
-
-  /** 返回目录并发版本。 */
-  public Integer getVersion() {
-    return version;
-  }
-
-  /** 设置目录并发版本。 */
-  public void setVersion(Integer version) {
-    this.version = version;
-  }
-
-  /** 返回该表是否被已登记查询适配器用作数据来源。 */
-  public boolean isQueryRegistered() {
-    return queryRegistered;
-  }
-
-  /** 设置查询适配器接入状态。 */
-  public void setQueryRegistered(boolean queryRegistered) {
-    this.queryRegistered = queryRegistered;
   }
 }

@@ -11,6 +11,7 @@ import java.util.Objects;
  * @author ruoyi
  */
 public class AjaxResult extends HashMap<String, Object> {
+  /** Java 序列化版本号。 */
   private static final long serialVersionUID = 1L;
 
   /** 状态码 */

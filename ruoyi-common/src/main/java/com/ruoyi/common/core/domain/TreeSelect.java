@@ -8,13 +8,18 @@ import com.ruoyi.common.utils.StringUtils;
 import java.io.Serializable;
 import java.util.List;
 import java.util.stream.Collectors;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Treeselect树结构实体类
  *
  * @author ruoyi
  */
+@Getter
+@Setter
 public class TreeSelect implements Serializable {
+  /** Java 序列化版本号。 */
   private static final long serialVersionUID = 1L;
 
   /** 节点ID */
@@ -43,37 +48,5 @@ public class TreeSelect implements Serializable {
     this.id = menu.getMenuId();
     this.label = menu.getMenuName();
     this.children = menu.getChildren().stream().map(TreeSelect::new).collect(Collectors.toList());
-  }
-
-  public Long getId() {
-    return id;
-  }
-
-  public void setId(Long id) {
-    this.id = id;
-  }
-
-  public String getLabel() {
-    return label;
-  }
-
-  public void setLabel(String label) {
-    this.label = label;
-  }
-
-  public boolean isDisabled() {
-    return disabled;
-  }
-
-  public void setDisabled(boolean disabled) {
-    this.disabled = disabled;
-  }
-
-  public List<TreeSelect> getChildren() {
-    return children;
-  }
-
-  public void setChildren(List<TreeSelect> children) {
-    this.children = children;
   }
 }

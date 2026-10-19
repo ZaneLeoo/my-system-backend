@@ -6,6 +6,8 @@ import com.ruoyi.common.constant.UserConstants;
 import com.ruoyi.common.core.domain.BaseEntity;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
@@ -14,7 +16,10 @@ import org.apache.commons.lang3.builder.ToStringStyle;
  *
  * @author ruoyi
  */
+@Getter
+@Setter
 public class SysDictData extends BaseEntity {
+  /** Java 序列化版本号。 */
   private static final long serialVersionUID = 1L;
 
   /** 字典编码 */
@@ -51,30 +56,10 @@ public class SysDictData extends BaseEntity {
   @Excel(name = "状态", readConverterExp = "0=正常,1=停用")
   private String status;
 
-  public Long getDictCode() {
-    return dictCode;
-  }
-
-  public void setDictCode(Long dictCode) {
-    this.dictCode = dictCode;
-  }
-
-  public Long getDictSort() {
-    return dictSort;
-  }
-
-  public void setDictSort(Long dictSort) {
-    this.dictSort = dictSort;
-  }
-
   @NotBlank(message = "字典标签不能为空")
   @Size(min = 0, max = 100, message = "字典标签长度不能超过100个字符")
   public String getDictLabel() {
     return dictLabel;
-  }
-
-  public void setDictLabel(String dictLabel) {
-    this.dictLabel = dictLabel;
   }
 
   @NotBlank(message = "字典键值不能为空")
@@ -83,18 +68,10 @@ public class SysDictData extends BaseEntity {
     return dictValue;
   }
 
-  public void setDictValue(String dictValue) {
-    this.dictValue = dictValue;
-  }
-
   @NotBlank(message = "字典类型不能为空")
   @Size(min = 0, max = 100, message = "字典类型长度不能超过100个字符")
   public String getDictType() {
     return dictType;
-  }
-
-  public void setDictType(String dictType) {
-    this.dictType = dictType;
   }
 
   @Size(min = 0, max = 100, message = "样式属性长度不能超过100个字符")
@@ -102,36 +79,8 @@ public class SysDictData extends BaseEntity {
     return cssClass;
   }
 
-  public void setCssClass(String cssClass) {
-    this.cssClass = cssClass;
-  }
-
-  public String getListClass() {
-    return listClass;
-  }
-
-  public void setListClass(String listClass) {
-    this.listClass = listClass;
-  }
-
   public boolean getDefault() {
     return UserConstants.YES.equals(this.isDefault);
-  }
-
-  public String getIsDefault() {
-    return isDefault;
-  }
-
-  public void setIsDefault(String isDefault) {
-    this.isDefault = isDefault;
-  }
-
-  public String getStatus() {
-    return status;
-  }
-
-  public void setStatus(String status) {
-    this.status = status;
   }
 
   @Override

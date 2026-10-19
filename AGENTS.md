@@ -4,7 +4,8 @@
 - Java 使用 JDK 17+，格式以 Spotless 的 GOOGLE 规范为准，左花括号同行、2 空格缩进。
 - Java 的 `if`、`else`、`for`（含增强 for）、`while`、`do-while` 的语句体必须使用 `{}`，单行语句也不例外；允许正常的 `else if` 链。
 - 禁止使用 `var`：局部变量、循环变量和 try-with-resources 资源变量写出具体类型；Lambda 可使用普通隐式参数，显式标注参数类型时也不得使用 `var`。
-- Java 实体、DTO、VO 使用普通类，不使用 `record`，不引入 Lombok；新增或修改的方法补齐 Javadoc。
+- Java 实体、DTO、VO 使用普通类，不使用 `record`；简单属性使用 Lombok `@Getter`、`@Setter`，构造方法显式声明。保留带校验、JSON 注解、空白清理、默认值或其他业务逻辑的访问方法；不统一使用 `@Data`、`@Value`，避免改变相等性、字符串输出及继承行为。
+- 实体、DTO、VO 及查询配置数据类的字段提供中文 Javadoc，说明业务含义，必要时注明单位、状态取值、税率口径、精度、空值及并发约束；手写方法继续按职责补齐 Javadoc。
 - Controller 的 HTTP 接口方法及 Java 接口的业务契约需提供完整 Javadoc：说明用途、参数及返回值，必要时说明状态、版本、权限、事务等关键约束和实际抛出的业务异常。已有契约的实现方法可使用 `{@inheritDoc}`，仅补充实现特有行为。
 - Getter/Setter、简单属性方法及直观辅助方法使用简洁的一句 Javadoc，避免重复代码含义的冗长说明；不添加不存在的参数、返回值或异常标签。
 - 新业务实体按需继承 `AuditEntity` 或 `BusinessEntity`，统一使用公共审计及逻辑删除约定，见 `docs/business-persistence-conventions.md`。

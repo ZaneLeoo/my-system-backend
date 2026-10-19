@@ -2,8 +2,12 @@ package com.ruoyi.business.masterdata.category.dto;
 
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
 /** 分类树表查询参数，使用普通 JavaBean 属性绑定 URL 参数。 */
+@Getter
+@Setter
 public class CategoryQuery {
   /** 分类编码筛选。 */
   @Size(max = 64)
@@ -25,35 +29,5 @@ public class CategoryQuery {
     setCategoryCode(categoryCode);
     setCategoryName(categoryName);
     setStatus(status);
-  }
-
-  /** 返回分类编码筛选。 */
-  public String getCategoryCode() {
-    return categoryCode;
-  }
-
-  /** 设置分类编码筛选。 */
-  public void setCategoryCode(String categoryCode) {
-    this.categoryCode = categoryCode;
-  }
-
-  /** 返回分类名称筛选。 */
-  public String getCategoryName() {
-    return categoryName;
-  }
-
-  /** 设置分类名称筛选。 */
-  public void setCategoryName(String categoryName) {
-    this.categoryName = categoryName;
-  }
-
-  /** 返回启停状态筛选。 */
-  public String getStatus() {
-    return status;
-  }
-
-  /** 设置启停状态筛选。 */
-  public void setStatus(String status) {
-    this.status = status;
   }
 }

@@ -2,13 +2,18 @@ package com.ruoyi.common.core.domain;
 
 import com.ruoyi.common.constant.HttpStatus;
 import java.io.Serializable;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * 响应信息主体
  *
  * @author ruoyi
  */
+@Getter
+@Setter
 public class R<T> implements Serializable {
+  /** Java 序列化版本号。 */
   private static final long serialVersionUID = 1L;
 
   /** 成功 */
@@ -17,10 +22,13 @@ public class R<T> implements Serializable {
   /** 失败 */
   public static final int FAIL = HttpStatus.ERROR;
 
+  /** 统一响应业务状态码。 */
   private int code;
 
+  /** 统一响应提示信息。 */
   private String msg;
 
+  /** 实际业务数据，无业务数据时为 null。 */
   private T data;
 
   public static <T> R<T> ok() {
@@ -61,30 +69,6 @@ public class R<T> implements Serializable {
     apiResult.setData(data);
     apiResult.setMsg(msg);
     return apiResult;
-  }
-
-  public int getCode() {
-    return code;
-  }
-
-  public void setCode(int code) {
-    this.code = code;
-  }
-
-  public String getMsg() {
-    return msg;
-  }
-
-  public void setMsg(String msg) {
-    this.msg = msg;
-  }
-
-  public T getData() {
-    return data;
-  }
-
-  public void setData(T data) {
-    this.data = data;
   }
 
   public static <T> Boolean isError(R<T> ret) {

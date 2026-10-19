@@ -2,8 +2,12 @@ package com.ruoyi.business.masterdata.category.dto;
 
 import com.ruoyi.business.masterdata.category.domain.CategoryStatus;
 import jakarta.validation.constraints.*;
+import lombok.Getter;
+import lombok.Setter;
 
 /** 分类保存参数；客户端不能指定审计字段和删除标记。 */
+@Getter
+@Setter
 public class SaveCategoryRequest {
   /** 分类 ID，新增时不指定。 */
   @Positive private Long categoryId;
@@ -57,39 +61,9 @@ public class SaveCategoryRequest {
     setVersion(version);
   }
 
-  /** 返回分类 ID，新增时不指定。 */
-  public Long getCategoryId() {
-    return categoryId;
-  }
-
-  /** 设置分类 ID，新增时不指定。 */
-  public void setCategoryId(Long categoryId) {
-    this.categoryId = categoryId;
-  }
-
-  /** 返回上级分类 ID，0 为顶级。 */
-  public Long getParentId() {
-    return parentId;
-  }
-
-  /** 设置上级分类 ID，0 为顶级。 */
-  public void setParentId(Long parentId) {
-    this.parentId = parentId;
-  }
-
-  /** 返回分类编码。 */
-  public String getCategoryCode() {
-    return categoryCode;
-  }
-
   /** 设置分类编码，并清理首尾空白。 */
   public void setCategoryCode(String categoryCode) {
     this.categoryCode = categoryCode == null ? null : categoryCode.strip();
-  }
-
-  /** 返回分类名称。 */
-  public String getCategoryName() {
-    return categoryName;
   }
 
   /** 设置分类名称，并清理首尾空白。 */
@@ -97,43 +71,8 @@ public class SaveCategoryRequest {
     this.categoryName = categoryName == null ? null : categoryName.strip();
   }
 
-  /** 返回显示顺序。 */
-  public Integer getSortOrder() {
-    return sortOrder;
-  }
-
-  /** 设置显示顺序。 */
-  public void setSortOrder(Integer sortOrder) {
-    this.sortOrder = sortOrder;
-  }
-
-  /** 返回启停状态。 */
-  public CategoryStatus getStatus() {
-    return status;
-  }
-
-  /** 设置启停状态。 */
-  public void setStatus(CategoryStatus status) {
-    this.status = status;
-  }
-
-  /** 返回备注。 */
-  public String getRemark() {
-    return remark;
-  }
-
   /** 设置备注，将空值规范为无备注并清理首尾空白。 */
   public void setRemark(String remark) {
     this.remark = remark == null ? "" : remark.strip();
-  }
-
-  /** 返回编辑版本号，新增时不指定。 */
-  public Integer getVersion() {
-    return version;
-  }
-
-  /** 设置编辑版本号，新增时不指定。 */
-  public void setVersion(Integer version) {
-    this.version = version;
   }
 }

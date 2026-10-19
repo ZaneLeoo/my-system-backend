@@ -1,12 +1,16 @@
 package com.ruoyi.system.domain.vo;
 
 import com.ruoyi.common.utils.StringUtils;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * 路由显示信息
  *
  * @author ruoyi
  */
+@Getter
+@Setter
 public class MetaVo {
   /** 设置该路由在侧边栏和面包屑中展示的名字 */
   private String title;
@@ -46,37 +50,5 @@ public class MetaVo {
     if (StringUtils.ishttp(link)) {
       this.link = link;
     }
-  }
-
-  public boolean isNoCache() {
-    return noCache;
-  }
-
-  public void setNoCache(boolean noCache) {
-    this.noCache = noCache;
-  }
-
-  public String getTitle() {
-    return title;
-  }
-
-  public void setTitle(String title) {
-    this.title = title;
-  }
-
-  public String getIcon() {
-    return icon;
-  }
-
-  public void setIcon(String icon) {
-    this.icon = icon;
-  }
-
-  public String getLink() {
-    return link;
-  }
-
-  public void setLink(String link) {
-    this.link = link;
   }
 }
