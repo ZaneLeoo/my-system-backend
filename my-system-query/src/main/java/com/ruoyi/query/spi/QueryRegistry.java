@@ -14,14 +14,19 @@ public class QueryRegistry {
 
   /** 拒绝重复登记，避免查询对象被意外替换。 */
   public QueryRegistry(List<QueryAdapter> values) {
-    for (var a : values)
-      if (adapters.putIfAbsent(a.key(), a) != null) throw new IllegalStateException("重复查询对象");
+    for (QueryAdapter a : values) {
+      if (adapters.putIfAbsent(a.key(), a) != null) {
+        throw new IllegalStateException("重复查询对象");
+      }
+    }
   }
 
   /** 返回登记的适配器。 */
   public QueryAdapter require(String key) {
-    var a = adapters.get(key);
-    if (a == null) throw new ServiceException("查询对象未接入");
+    QueryAdapter a = adapters.get(key);
+    if (a == null) {
+      throw new ServiceException("查询对象未接入");
+    }
     return a;
   }
 
@@ -34,12 +39,14 @@ public class QueryRegistry {
 
   /** 运行时始终按当前登录身份核验业务权限。 */
   public QueryAdapter authorized(String key) {
-    var a = require(key);
-    var permissions = SecurityUtils.getLoginUser().getPermissions();
+    QueryAdapter a = require(key);
+    Set<String> permissions = SecurityUtils.getLoginUser().getPermissions();
     if (permissions == null
         || permissions.stream()
-            .noneMatch(p -> p.equals("*:*:*") || PatternMatchUtils.simpleMatch(p, a.permission())))
+            .noneMatch(
+                p -> p.equals("*:*:*") || PatternMatchUtils.simpleMatch(p, a.permission()))) {
       throw new AccessDeniedException("没有业务列表权限");
+    }
     return a;
   }
 }

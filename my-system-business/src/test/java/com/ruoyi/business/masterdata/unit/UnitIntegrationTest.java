@@ -14,6 +14,7 @@ import com.ruoyi.business.masterdata.unit.service.impl.UnitServiceImpl;
 import com.ruoyi.business.masterdata.unit.vo.UnitView;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
+import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.enums.EnableStatus;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.framework.config.JacksonConfig;
@@ -24,7 +25,9 @@ import com.ruoyi.framework.web.service.PermissionService;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
+import java.sql.Statement;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
@@ -87,15 +90,21 @@ class UnitIntegrationTest {
     context.refresh();
     jdbc = new JdbcTemplate(source);
     Path migration = Path.of("../sql/migrations/20261015_01_unit.sql");
-    if (!Files.exists(migration)) migration = Path.of("sql/migrations/20261015_01_unit.sql");
+    if (!Files.exists(migration)) {
+      migration = Path.of("sql/migrations/20261015_01_unit.sql");
+    }
     String schema =
         Files.readString(migration)
             .split("START TRANSACTION;")[0]
             .replaceAll("(?m)^SET NAMES.*;", "")
             .replaceAll("ENGINE=InnoDB[^;]*", "");
     schemaConnection = source.getConnection();
-    try (var sql = schemaConnection.createStatement()) {
-      for (String statement : schema.split(";")) if (!statement.isBlank()) sql.execute(statement);
+    try (Statement sql = schemaConnection.createStatement()) {
+      for (String statement : schema.split(";")) {
+        if (!statement.isBlank()) {
+          sql.execute(statement);
+        }
+      }
     }
     com.ruoyi.business.masterdata.common.MasterDataTestSchema.create(schemaConnection);
     service = context.getBean(UnitService.class);
@@ -117,8 +126,12 @@ class UnitIntegrationTest {
     PageHelper.clearPage();
     SecurityContextHolder.clearContext();
     RequestContextHolder.resetRequestAttributes();
-    if (schemaConnection != null) schemaConnection.close();
-    if (context != null) context.close();
+    if (schemaConnection != null) {
+      schemaConnection.close();
+    }
+    if (context != null) {
+      context.close();
+    }
   }
 
   /** 审计保护、启停修改、版本递增和实体逻辑删除均有效。 */
@@ -147,7 +160,7 @@ class UnitIntegrationTest {
     service.delete(created.getUnitId(), 1);
     assertThrows(ServiceException.class, () -> service.detail(created.getUnitId()));
     assertEquals(0, service.list(new UnitQuery()).getTotal());
-    var deleted =
+    Map<String, Object> deleted =
         jdbc.queryForMap(
             "SELECT del_flag, create_by, update_by, update_time FROM md_unit WHERE unit_id=?",
             created.getUnitId());
@@ -179,12 +192,13 @@ class UnitIntegrationTest {
   /** 分页总数独立于页大小，排序作用于全部结果，组合条件及通配字符按文本处理。 */
   @Test
   void serverPaginationSortAndLiteralFilters() {
-    for (String code : List.of("D", "A", "C", "B", "E"))
+    for (String code : List.of("D", "A", "C", "B", "E")) {
       service.create(request(null, code, "单位" + code, null));
+    }
     UnitQuery query = new UnitQuery();
     query.setPageSize(2);
     query.setPageNum(2);
-    var second = service.list(query);
+    PageResult<UnitView> second = service.list(query);
     assertEquals(5, second.getTotal());
     assertEquals(List.of("C", "D"), second.getRows().stream().map(UnitView::getUnitCode).toList());
     query.setSortField("unitName");
@@ -264,7 +278,7 @@ class UnitIntegrationTest {
   /** 非法查询、JSON 和版本参数通过统一 R 错误响应拒绝。 */
   @Test
   void invalidInputUsesBusinessErrors() throws Exception {
-    for (var entry :
+    for (Entry<String, String> entry :
         Map.of(
                 "pageNum",
                 "0",

@@ -15,7 +15,7 @@ public class MetadataTableView {
 
   /** 将目录实体和独立查询能力组合为管理页投影。 */
   public static MetadataTableView from(MetadataTable table, boolean queryRegistered) {
-    var view = new MetadataTableView();
+    MetadataTableView view = new MetadataTableView();
     view.setTableId(table.getTableId());
     view.setTableName(table.getTableName());
     view.setTableComment(table.getTableComment());

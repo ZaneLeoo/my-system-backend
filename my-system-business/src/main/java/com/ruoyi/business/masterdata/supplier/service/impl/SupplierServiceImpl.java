@@ -45,12 +45,15 @@ public class SupplierServiceImpl implements SupplierService {
       throw new ServiceException("分页参数无效，每页允许 1～100 条");
     }
     LambdaQueryWrapper<Supplier> wrapper = Wrappers.lambdaQuery();
-    if (query.getSupplierCode() != null)
+    if (query.getSupplierCode() != null) {
       wrapper.like(Supplier::getSupplierCode, escapeLike(query.getSupplierCode()));
-    if (query.getSupplierName() != null)
+    }
+    if (query.getSupplierName() != null) {
       wrapper.like(Supplier::getSupplierName, escapeLike(query.getSupplierName()));
-    if (query.getStatus() != null)
+    }
+    if (query.getStatus() != null) {
       wrapper.eq(Supplier::getStatus, EnableStatus.fromCode(query.getStatus()));
+    }
     SFunction<Supplier, ?> field = sortField(query.getSortField());
     boolean ascending =
         switch (query.getSortDirection() == null ? "" : query.getSortDirection()) {
@@ -112,11 +115,14 @@ public class SupplierServiceImpl implements SupplierService {
   public void update(SaveSupplierRequest request) {
     Supplier supplier = lockExisting(request.getSupplierId(), request.getVersion());
     if (request.getStatus() == EnableStatus.DISABLED
-        && references.supplierPurchaseDocuments(supplier.getSupplierId(), true) > 0)
+        && references.supplierPurchaseDocuments(supplier.getSupplierId(), true) > 0) {
       throw new ServiceException("存在未完成采购单据，不能停用供应商");
+    }
     checkUnique(request, supplier.getSupplierId());
     copyFields(request, supplier);
-    if (supplier.getVersion() == Integer.MAX_VALUE) throw new ServiceException("供应商版本已达上限，请联系管理员");
+    if (supplier.getVersion() == Integer.MAX_VALUE) {
+      throw new ServiceException("供应商版本已达上限，请联系管理员");
+    }
     supplier.setVersion(supplier.getVersion() + 1);
     try {
       int affected =
@@ -125,7 +131,9 @@ public class SupplierServiceImpl implements SupplierService {
               Wrappers.<Supplier>lambdaUpdate()
                   .eq(Supplier::getSupplierId, supplier.getSupplierId())
                   .eq(Supplier::getVersion, request.getVersion()));
-      if (affected != 1) throw new ServiceException("供应商已变更，请刷新后重试");
+      if (affected != 1) {
+        throw new ServiceException("供应商已变更，请刷新后重试");
+      }
     } catch (DuplicateKeyException exception) {
       throw duplicateError();
     }
@@ -136,9 +144,12 @@ public class SupplierServiceImpl implements SupplierService {
   @Transactional(rollbackFor = Exception.class)
   public void delete(Long id, Integer version) {
     Supplier supplier = lockExisting(id, version);
-    if (references.supplierPurchaseDocuments(id, false) > 0)
+    if (references.supplierPurchaseDocuments(id, false) > 0) {
       throw new ServiceException("存在采购单据引用，不能删除供应商");
-    if (mapper.deleteById(supplier) != 1) throw new ServiceException("供应商已变更，请刷新后重试");
+    }
+    if (mapper.deleteById(supplier) != 1) {
+      throw new ServiceException("供应商已变更，请刷新后重试");
+    }
   }
 
   /** 将允许的接口字段映射到类型安全的列，不拼接用户排序表达式。 */
@@ -165,15 +176,21 @@ public class SupplierServiceImpl implements SupplierService {
       throw new ServiceException("供应商不存在或已删除");
     }
     Supplier supplier = requireSupplier(id);
-    if (!version.equals(supplier.getVersion())) throw new ServiceException("供应商已变更，请刷新后重试");
+    if (!version.equals(supplier.getVersion())) {
+      throw new ServiceException("供应商已变更，请刷新后重试");
+    }
     return supplier;
   }
 
   /** 获取有效实体，统一处理不存在和已删除记录。 */
   private Supplier requireSupplier(Long id) {
-    if (id == null || id <= 0) throw new ServiceException("供应商 ID 必须为正数");
+    if (id == null || id <= 0) {
+      throw new ServiceException("供应商 ID 必须为正数");
+    }
     Supplier supplier = mapper.selectById(id);
-    if (supplier == null) throw new ServiceException("供应商不存在或已删除");
+    if (supplier == null) {
+      throw new ServiceException("供应商不存在或已删除");
+    }
     return supplier;
   }
 

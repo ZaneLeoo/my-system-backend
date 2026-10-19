@@ -44,12 +44,15 @@ public class UnitServiceImpl implements UnitService {
       throw new ServiceException("分页参数无效，每页允许 1～100 条");
     }
     LambdaQueryWrapper<Unit> wrapper = Wrappers.lambdaQuery();
-    if (query.getUnitCode() != null)
+    if (query.getUnitCode() != null) {
       wrapper.like(Unit::getUnitCode, escapeLike(query.getUnitCode()));
-    if (query.getUnitName() != null)
+    }
+    if (query.getUnitName() != null) {
       wrapper.like(Unit::getUnitName, escapeLike(query.getUnitName()));
-    if (query.getStatus() != null)
+    }
+    if (query.getStatus() != null) {
       wrapper.eq(Unit::getStatus, EnableStatus.fromCode(query.getStatus()));
+    }
     SFunction<Unit, ?> field = sortField(query.getSortField());
     boolean ascending =
         switch (query.getSortDirection() == null ? "" : query.getSortDirection()) {
@@ -99,17 +102,22 @@ public class UnitServiceImpl implements UnitService {
   public void update(SaveUnitRequest request) {
     Unit unit = lockExisting(request.getUnitId(), request.getVersion());
     if (request.getStatus() == EnableStatus.DISABLED
-        && references.unitPurchaseDocuments(unit.getUnitId(), true) > 0)
+        && references.unitPurchaseDocuments(unit.getUnitId(), true) > 0) {
       throw new ServiceException("存在未完成采购单据，不能停用单位");
+    }
     if (request.getStatus() == EnableStatus.DISABLED
         && references.unitItems(unit.getUnitId(), true) > 0) {
       throw new ServiceException("存在启用料品引用，请先调整或停用料品");
     }
-    if (request.getStatus() == EnableStatus.DISABLED && references.unitStock(unit.getUnitId()) > 0)
+    if (request.getStatus() == EnableStatus.DISABLED
+        && references.unitStock(unit.getUnitId()) > 0) {
       throw new ServiceException("存在库存，不能停用库存单位");
+    }
     checkUnique(request, unit.getUnitId());
     copyFields(request, unit);
-    if (unit.getVersion() == Integer.MAX_VALUE) throw new ServiceException("单位版本已达上限，请联系管理员");
+    if (unit.getVersion() == Integer.MAX_VALUE) {
+      throw new ServiceException("单位版本已达上限，请联系管理员");
+    }
     unit.setVersion(unit.getVersion() + 1);
     try {
       int affected =
@@ -118,7 +126,9 @@ public class UnitServiceImpl implements UnitService {
               Wrappers.<Unit>lambdaUpdate()
                   .eq(Unit::getUnitId, unit.getUnitId())
                   .eq(Unit::getVersion, request.getVersion()));
-      if (affected != 1) throw new ServiceException("单位已变更，请刷新后重试");
+      if (affected != 1) {
+        throw new ServiceException("单位已变更，请刷新后重试");
+      }
     } catch (DuplicateKeyException exception) {
       throw duplicateError();
     }
@@ -129,10 +139,15 @@ public class UnitServiceImpl implements UnitService {
   @Transactional(rollbackFor = Exception.class)
   public void delete(Long id, Integer version) {
     Unit unit = lockExisting(id, version);
-    if (references.unitPurchaseDocuments(id, false) > 0)
+    if (references.unitPurchaseDocuments(id, false) > 0) {
       throw new ServiceException("存在采购单据引用，不能删除单位");
-    if (references.unitItems(id, false) > 0) throw new ServiceException("存在料品引用，不能删除单位");
-    if (mapper.deleteById(unit) != 1) throw new ServiceException("单位已变更，请刷新后重试");
+    }
+    if (references.unitItems(id, false) > 0) {
+      throw new ServiceException("存在料品引用，不能删除单位");
+    }
+    if (mapper.deleteById(unit) != 1) {
+      throw new ServiceException("单位已变更，请刷新后重试");
+    }
   }
 
   /** 将允许的接口字段映射到类型安全的列，不拼接用户排序表达式。 */
@@ -159,15 +174,21 @@ public class UnitServiceImpl implements UnitService {
       throw new ServiceException("单位不存在或已删除");
     }
     Unit unit = requireUnit(id);
-    if (!version.equals(unit.getVersion())) throw new ServiceException("单位已变更，请刷新后重试");
+    if (!version.equals(unit.getVersion())) {
+      throw new ServiceException("单位已变更，请刷新后重试");
+    }
     return unit;
   }
 
   /** 获取有效实体，统一处理不存在和已删除记录。 */
   private Unit requireUnit(Long id) {
-    if (id == null || id <= 0) throw new ServiceException("单位 ID 必须为正数");
+    if (id == null || id <= 0) {
+      throw new ServiceException("单位 ID 必须为正数");
+    }
     Unit unit = mapper.selectById(id);
-    if (unit == null) throw new ServiceException("单位不存在或已删除");
+    if (unit == null) {
+      throw new ServiceException("单位不存在或已删除");
+    }
     return unit;
   }
 

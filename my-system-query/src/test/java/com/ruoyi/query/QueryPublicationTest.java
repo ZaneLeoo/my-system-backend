@@ -30,17 +30,17 @@ class QueryPublicationTest {
   /** 目录入口只关联后端登记的主表和明细来源，不靠前端猜测表名。 */
   @Test
   void tableLinksFollowRegisteredSources() {
-    var definitions = mock(QueryDefinitionMapper.class);
-    var metadata = mock(MetadataService.class);
-    var definition = new QueryDefinition();
+    QueryDefinitionMapper definitions = mock(QueryDefinitionMapper.class);
+    MetadataService metadata = mock(MetadataService.class);
+    QueryDefinition definition = new QueryDefinition();
     definition.setDefinitionId(7L);
     definition.setAdapterKey("test");
     definition.setDisplayName("采购订单");
     when(definitions.selectList(any())).thenReturn(List.of(definition));
-    var main = new MetadataTable();
+    MetadataTable main = new MetadataTable();
     main.setTableId(11L);
     main.setTableName("business");
-    var lines = new MetadataTable();
+    MetadataTable lines = new MetadataTable();
     lines.setTableId(12L);
     lines.setTableName("business_line");
     when(metadata.list()).thenReturn(List.of(main, lines));
@@ -49,7 +49,7 @@ class QueryPublicationTest {
             Map.of(
                 "main", new QuerySource("business", "b", "主表", null),
                 "lines", new QuerySource("business_line", "l", "明细", "l.parent_id=b.id")));
-    var service =
+    DefinitionService service =
         new DefinitionService(
             definitions,
             mock(QueryFieldMapper.class),
@@ -57,13 +57,13 @@ class QueryPublicationTest {
             mock(MetadataColumnMapper.class),
             metadata,
             registry);
-    var links = service.tableLinks();
+    List<Map<String, Object>> links = service.tableLinks();
     assertEquals(2, links.size());
     assertTrue(links.stream().anyMatch(link -> link.get("tableId").equals(11L)));
     assertTrue(links.stream().anyMatch(link -> link.get("tableId").equals(12L)));
     assertTrue(links.stream().allMatch(link -> link.get("definitionId").equals(7L)));
     when(metadata.findByIds(List.of(12L))).thenReturn(List.of(lines));
-    var pageLinks = service.tableLinks(List.of(12L));
+    List<Map<String, Object>> pageLinks = service.tableLinks(List.of(12L));
     assertEquals(1, pageLinks.size());
     assertEquals(12L, pageLinks.get(0).get("tableId"));
     assertThrows(ServiceException.class, () -> service.tableLinks(List.of(0L)));
@@ -114,7 +114,7 @@ class QueryPublicationTest {
 
   /** 直接构造已认证用户，独立于管理员权限。 */
   private void login(Set<String> permissions) {
-    var user = new LoginUser();
+    LoginUser user = new LoginUser();
     user.setPermissions(permissions);
     SecurityContextHolder.getContext()
         .setAuthentication(new UsernamePasswordAuthenticationToken(user, null, List.of()));
@@ -123,7 +123,7 @@ class QueryPublicationTest {
   /** 保存字段参数忽略客户端审计值，也不会因返回日期格式而绑定失败。 */
   @Test
   void writeDtoNeverBindsAudit() {
-    var request =
+    SaveDefinitionRequest request =
         JsonMapper.builder()
             .build()
             .readValue(
@@ -153,8 +153,9 @@ class QueryPublicationTest {
   /** 对外元数据不暴露内部列名、字段 ID 和类型定义。 */
   @Test
   void publicMetadataIsLimited() {
-    var runtime = new QueryRuntimeService(null, null, null, registry, new QueryCompiler());
-    var result = runtime.publicMetadata(snapshot);
+    QueryRuntimeService runtime =
+        new QueryRuntimeService(null, null, null, registry, new QueryCompiler());
+    Map<String, Object> result = runtime.publicMetadata(snapshot);
     String json = JSON.toJSONString(result);
     assertFalse(json.contains("business_name"));
     assertFalse(json.contains("columnId"));
@@ -165,18 +166,18 @@ class QueryPublicationTest {
   /** 缓存命中仍然检查当前用户权限和目录失效。 */
   @Test
   void cacheNeverBypassesAuthorizationOrSchema() {
-    var definitions = mock(DefinitionService.class);
-    var releases = mock(QueryReleaseMapper.class);
-    var columns = mock(MetadataColumnMapper.class);
-    var definition = new QueryDefinition();
+    DefinitionService definitions = mock(DefinitionService.class);
+    QueryReleaseMapper releases = mock(QueryReleaseMapper.class);
+    MetadataColumnMapper columns = mock(MetadataColumnMapper.class);
+    QueryDefinition definition = new QueryDefinition();
     definition.setDefinitionId(1L);
     definition.setPublishedRevision(1);
     when(definitions.byKey("test")).thenReturn(definition);
-    var release = new QueryRelease();
+    QueryRelease release = new QueryRelease();
     release.setConfigSnapshot(JSON.toJSONString(snapshot));
     when(releases.selectOne(any())).thenReturn(release);
     when(columns.selectList(any())).thenReturn(List.of(column));
-    var runtime =
+    QueryRuntimeService runtime =
         new QueryRuntimeService(definitions, releases, columns, registry, new QueryCompiler());
     assertEquals(1, runtime.published("test").getConfigVersion());
     login(Set.of("query:definition:list"));
@@ -189,20 +190,20 @@ class QueryPublicationTest {
   /** 已发布版本变更后拒绝过期请求，不执行适配器。 */
   @Test
   void staleRequestNeverExecutes() {
-    var definitions = mock(DefinitionService.class);
-    var releases = mock(QueryReleaseMapper.class);
-    var columns = mock(MetadataColumnMapper.class);
-    var definition = new QueryDefinition();
+    DefinitionService definitions = mock(DefinitionService.class);
+    QueryReleaseMapper releases = mock(QueryReleaseMapper.class);
+    MetadataColumnMapper columns = mock(MetadataColumnMapper.class);
+    QueryDefinition definition = new QueryDefinition();
     definition.setDefinitionId(1L);
     definition.setPublishedRevision(1);
     when(definitions.byKey("test")).thenReturn(definition);
-    var release = new QueryRelease();
+    QueryRelease release = new QueryRelease();
     release.setConfigSnapshot(JSON.toJSONString(snapshot));
     when(releases.selectOne(any())).thenReturn(release);
     when(columns.selectList(any())).thenReturn(List.of(column));
-    var runtime =
+    QueryRuntimeService runtime =
         new QueryRuntimeService(definitions, releases, columns, registry, new QueryCompiler());
-    var request = new SearchRequest();
+    SearchRequest request = new SearchRequest();
     request.setConfigVersion(0);
     assertEquals(
         409,
@@ -214,18 +215,18 @@ class QueryPublicationTest {
   /** 发布校验拒绝不匹配字段类型的运算符。 */
   @Test
   void invalidDraftCannotPublish() {
-    var definitions = mock(QueryDefinitionMapper.class);
-    var fields = mock(QueryFieldMapper.class);
-    var releases = mock(QueryReleaseMapper.class);
-    var columns = mock(MetadataColumnMapper.class);
-    var metadata = mock(MetadataService.class);
-    var definition = new QueryDefinition();
+    QueryDefinitionMapper definitions = mock(QueryDefinitionMapper.class);
+    QueryFieldMapper fields = mock(QueryFieldMapper.class);
+    QueryReleaseMapper releases = mock(QueryReleaseMapper.class);
+    MetadataColumnMapper columns = mock(MetadataColumnMapper.class);
+    MetadataService metadata = mock(MetadataService.class);
+    QueryDefinition definition = new QueryDefinition();
     definition.setDefinitionId(1L);
     definition.setQueryKey("test");
     definition.setAdapterKey("test");
     definition.setPublishedRevision(0);
     when(definitions.selectById(1L)).thenReturn(definition);
-    var table = new MetadataTable();
+    MetadataTable table = new MetadataTable();
     table.setTableId(1L);
     table.setTableName("business");
     table.setAvailable(true);
@@ -233,7 +234,7 @@ class QueryPublicationTest {
     column.setDataType("STRING");
     when(metadata.list()).thenReturn(List.of(table));
     when(columns.selectList(any())).thenReturn(List.of(column));
-    var draft = new QueryField();
+    QueryField draft = new QueryField();
     draft.setEnabled(true);
     draft.setFieldKey("name");
     draft.setSourceKey("main");
@@ -242,7 +243,8 @@ class QueryPublicationTest {
     draft.setOperatorsJson("[\"rawSQL\"]");
     draft.setDefaultOperator("rawSQL");
     when(fields.selectList(any())).thenReturn(List.of(draft));
-    var service = new DefinitionService(definitions, fields, releases, columns, metadata, registry);
+    DefinitionService service =
+        new DefinitionService(definitions, fields, releases, columns, metadata, registry);
     assertThrows(ServiceException.class, () -> service.draft(1L));
     verify(releases, never()).insert(any(QueryRelease.class));
   }

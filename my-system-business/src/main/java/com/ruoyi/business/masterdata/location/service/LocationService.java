@@ -16,9 +16,11 @@ import com.ruoyi.business.masterdata.warehouse.vo.WarehouseView;
 import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.enums.EnableStatus;
 import com.ruoyi.common.exception.ServiceException;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import java.util.List;
+import java.util.Set;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,18 +51,22 @@ public class LocationService {
     warehouses.require(query.getWarehouseId());
     LambdaQueryWrapper<Location> condition =
         Wrappers.<Location>lambdaQuery().eq(Location::getWarehouseId, query.getWarehouseId());
-    if (query.getLocationCode() != null)
+    if (query.getLocationCode() != null) {
       condition.like(Location::getLocationCode, escape(query.getLocationCode()));
-    if (query.getLocationName() != null)
+    }
+    if (query.getLocationName() != null) {
       condition.like(Location::getLocationName, escape(query.getLocationName()));
-    if (query.getKeyword() != null)
+    }
+    if (query.getKeyword() != null) {
       condition.and(
           w ->
               w.like(Location::getLocationCode, escape(query.getKeyword()))
                   .or()
                   .like(Location::getLocationName, escape(query.getKeyword())));
-    if (query.getStatus() != null)
+    }
+    if (query.getStatus() != null) {
       condition.eq(Location::getStatus, EnableStatus.fromCode(query.getStatus()));
+    }
     SFunction<Location, ?> sort =
         switch (query.getSortField() == null ? "locationCode" : query.getSortField()) {
           case "locationCode" -> Location::getLocationCode;
@@ -97,8 +103,9 @@ public class LocationService {
       isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
   public LocationView create(SaveLocationRequest request) {
     validate(request);
-    if (request.getLocationId() != null || request.getVersion() != null)
+    if (request.getLocationId() != null || request.getVersion() != null) {
       throw new ServiceException("新增货位不能指定 ID 或版本号");
+    }
     Warehouse warehouse = warehouses.lock(request.getWarehouseId());
     requireSelectable(warehouse);
     checkCode(request, null);
@@ -122,16 +129,22 @@ public class LocationService {
     Location initial = require(request.getLocationId());
     Warehouse warehouse = warehouses.lock(initial.getWarehouseId());
     Location location = lock(initial.getLocationId(), request.getVersion());
-    if (!location.getWarehouseId().equals(request.getWarehouseId()))
+    if (!location.getWarehouseId().equals(request.getWarehouseId())) {
       throw new ServiceException("货位创建后不能更换所属仓库");
-    if (location.getStatus() != EnableStatus.ENABLED && request.getStatus() == EnableStatus.ENABLED)
+    }
+    if (location.getStatus() != EnableStatus.ENABLED
+        && request.getStatus() == EnableStatus.ENABLED) {
       requireSelectable(warehouse);
+    }
     if (request.getStatus() == EnableStatus.DISABLED
-        && references.locationReferences(location.getLocationId(), true) > 0)
+        && references.locationReferences(location.getLocationId(), true) > 0) {
       throw new ServiceException("货位存在未完成入库业务或库存，不能停用");
+    }
     checkCode(request, location.getLocationId());
     copy(request, location);
-    if (location.getVersion() == Integer.MAX_VALUE) throw new ServiceException("货位版本已达上限");
+    if (location.getVersion() == Integer.MAX_VALUE) {
+      throw new ServiceException("货位版本已达上限");
+    }
     location.setVersion(location.getVersion() + 1);
     try {
       if (mapper.update(
@@ -139,7 +152,9 @@ public class LocationService {
               Wrappers.<Location>lambdaUpdate()
                   .eq(Location::getLocationId, location.getLocationId())
                   .eq(Location::getVersion, request.getVersion()))
-          != 1) throw stale();
+          != 1) {
+        throw stale();
+      }
     } catch (DuplicateKeyException exception) {
       throw duplicate();
     }
@@ -153,16 +168,23 @@ public class LocationService {
     Location initial = require(id);
     warehouses.lock(initial.getWarehouseId());
     Location location = lock(id, version);
-    if (references.locationReferences(id, false) > 0)
+    if (references.locationReferences(id, false) > 0) {
       throw new ServiceException("货位存在入库或库存历史引用，不能删除");
-    if (mapper.deleteById(location) != 1) throw stale();
+    }
+    if (mapper.deleteById(location) != 1) {
+      throw stale();
+    }
   }
 
   /** 读取当前有效货位，首次读取仅用于定位不可变的所属仓库。 */
   private Location require(Long id) {
-    if (id == null || id <= 0) throw new ServiceException("货位 ID 必须为正数");
+    if (id == null || id <= 0) {
+      throw new ServiceException("货位 ID 必须为正数");
+    }
     Location result = mapper.selectById(id);
-    if (result == null) throw new ServiceException("货位不存在或已删除");
+    if (result == null) {
+      throw new ServiceException("货位不存在或已删除");
+    }
     return result;
   }
 
@@ -171,22 +193,30 @@ public class LocationService {
     Location result =
         mapper.selectOne(
             Wrappers.<Location>lambdaQuery().eq(Location::getLocationId, id).last("FOR UPDATE"));
-    if (result == null) throw new ServiceException("货位不存在或已删除");
-    if (version == null || !version.equals(result.getVersion())) throw stale();
+    if (result == null) {
+      throw new ServiceException("货位不存在或已删除");
+    }
+    if (version == null || !version.equals(result.getVersion())) {
+      throw stale();
+    }
     return result;
   }
 
   /** 新选、创建及重新启用都需要父仓库处于可用状态。 */
   public void requireSelectable(Warehouse warehouse) {
-    if (warehouse.getStatus() != EnableStatus.ENABLED) throw new ServiceException("所属仓库已停用");
-    if (!Boolean.TRUE.equals(warehouse.getLocationEnabled()))
+    if (warehouse.getStatus() != EnableStatus.ENABLED) {
+      throw new ServiceException("所属仓库已停用");
+    }
+    if (!Boolean.TRUE.equals(warehouse.getLocationEnabled())) {
       throw new ServiceException("所属仓库未启用货位管理");
+    }
   }
 
   /** 编码只在同一仓库内唯一，并保留已删除货位的占用。 */
   private void checkCode(SaveLocationRequest request, Long excluded) {
-    if (mapper.countCode(request.getLocationCode(), excluded, request.getWarehouseId()) > 0)
+    if (mapper.countCode(request.getLocationCode(), excluded, request.getWarehouseId()) > 0) {
       throw duplicate();
+    }
   }
 
   /** 仅复制维护字段，所属仓库在更新前已验证不变。 */
@@ -200,9 +230,13 @@ public class LocationService {
 
   /** 参数约束对内部服务调用同样生效。 */
   private void validate(Object value) {
-    if (value == null) throw new ServiceException("参数不能为空");
-    var errors = validator.validate(value);
-    if (!errors.isEmpty()) throw new ConstraintViolationException(errors);
+    if (value == null) {
+      throw new ServiceException("参数不能为空");
+    }
+    Set<ConstraintViolation<Object>> errors = validator.validate(value);
+    if (!errors.isEmpty()) {
+      throw new ConstraintViolationException(errors);
+    }
   }
 
   /** 唯一索引冲突转换为业务提示。 */

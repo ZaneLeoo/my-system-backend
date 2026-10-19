@@ -23,6 +23,7 @@ import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.enums.EnableStatus;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.SecurityUtils;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import java.time.LocalDate;
@@ -72,17 +73,25 @@ public class OrderService {
     validate(query);
     if (query.getBeginDate() != null
         && query.getEndDate() != null
-        && query.getBeginDate().isAfter(query.getEndDate()))
+        && query.getBeginDate().isAfter(query.getEndDate())) {
       throw new ServiceException("开始日期不能晚于结束日期");
+    }
     LambdaQueryWrapper<PurchaseOrder> wrapper = Wrappers.lambdaQuery();
-    if (query.getOrderNo() != null)
+    if (query.getOrderNo() != null) {
       wrapper.like(PurchaseOrder::getOrderNo, escape(query.getOrderNo()));
-    if (query.getSupplierId() != null)
+    }
+    if (query.getSupplierId() != null) {
       wrapper.eq(PurchaseOrder::getSupplierId, query.getSupplierId());
-    if (query.getStatus() != null)
+    }
+    if (query.getStatus() != null) {
       wrapper.eq(PurchaseOrder::getStatus, OrderStatus.fromCode(query.getStatus()));
-    if (query.getBeginDate() != null) wrapper.ge(PurchaseOrder::getOrderDate, query.getBeginDate());
-    if (query.getEndDate() != null) wrapper.le(PurchaseOrder::getOrderDate, query.getEndDate());
+    }
+    if (query.getBeginDate() != null) {
+      wrapper.ge(PurchaseOrder::getOrderDate, query.getBeginDate());
+    }
+    if (query.getEndDate() != null) {
+      wrapper.le(PurchaseOrder::getOrderDate, query.getEndDate());
+    }
     SFunction<PurchaseOrder, ?> sort =
         switch (query.getSortField() == null ? "orderDate" : query.getSortField()) {
           case "orderNo" -> PurchaseOrder::getOrderNo;
@@ -112,7 +121,7 @@ public class OrderService {
               .map(
                   row -> {
                     OrderView view = OrderView.from(row);
-                    var execution = progress.get(row.getOrderId());
+                    OrderExecutionProgress execution = progress.get(row.getOrderId());
                     if (execution != null) {
                       view.setArrivalProgress(execution.getArrivalProgress());
                       view.setReceiptProgress(execution.getReceiptProgress());
@@ -128,7 +137,9 @@ public class OrderService {
 
   /** 按查询结果顺序补齐订单和执行进度；只读取当前页，不逐行发起关联查询。 */
   public List<OrderView> queryViews(List<Long> ids) {
-    if (ids.isEmpty()) return List.of();
+    if (ids.isEmpty()) {
+      return List.of();
+    }
     Map<Long, PurchaseOrder> found =
         orders.selectByIds(ids).stream()
             .collect(Collectors.toMap(PurchaseOrder::getOrderId, Function.identity()));
@@ -140,7 +151,7 @@ public class OrderService {
         .map(
             id -> {
               OrderView view = OrderView.from(found.get(id));
-              var execution = progress.get(id);
+              OrderExecutionProgress execution = progress.get(id);
               if (execution != null) {
                 view.setArrivalProgress(execution.getArrivalProgress());
                 view.setReceiptProgress(execution.getReceiptProgress());
@@ -155,7 +166,7 @@ public class OrderService {
   public OrderView detail(Long id) {
     PurchaseOrder order = require(id);
     OrderView view = OrderView.from(order);
-    var receipts =
+    Map<Long, OrderLineReceiptQuantities> receipts =
         orders.receiptQuantities(List.of(id)).stream()
             .collect(
                 Collectors.toMap(OrderLineReceiptQuantities::getOrderLineId, Function.identity()));
@@ -163,8 +174,8 @@ public class OrderService {
         existingLines(id).stream()
             .map(
                 row -> {
-                  var line = OrderLineView.from(row);
-                  var receipt = receipts.get(row.getLineId());
+                  OrderLineView line = OrderLineView.from(row);
+                  OrderLineReceiptQuantities receipt = receipts.get(row.getLineId());
                   if (receipt != null) {
                     line.setPendingReceiptQuantity(receipt.getPendingReceiptQuantity());
                     line.setReceivedQuantity(receipt.getReceivedQuantity());
@@ -199,7 +210,9 @@ public class OrderService {
   /** 获取当前有效员工、部门及系统精度，不开放人员维护数据。 */
   public OrderDefaults defaults() {
     OrderDefaults result = orders.defaults(SecurityUtils.getUserId(), SecurityUtils.getDeptId());
-    if (result == null) throw new ServiceException("当前员工或部门无效，不能创建采购订单");
+    if (result == null) {
+      throw new ServiceException("当前员工或部门无效，不能创建采购订单");
+    }
     result.setQuantityDecimalPlaces(configDecimals(OrderRules.QUANTITY_CONFIG));
     result.setPriceDecimalPlaces(configDecimals(OrderRules.PRICE_CONFIG));
     result.setAmountDecimalPlaces(OrderRules.MONEY_DECIMALS);
@@ -230,8 +243,9 @@ public class OrderService {
     validate(request);
     if (request.getOrderId() != null
         || request.getVersion() != null
-        || request.getLines().stream().anyMatch(l -> l.getLineId() != null))
+        || request.getLines().stream().anyMatch(l -> l.getLineId() != null)) {
       throw new ServiceException("新增订单不能指定订单 ID、行 ID 或版本号");
+    }
     lockTree();
     OrderDefaults defaults = defaults();
     PurchaseOrder order = new PurchaseOrder();
@@ -263,7 +277,9 @@ public class OrderService {
         "PO"
             + LocalDate.now(OrderRules.TIME_ZONE).format(DateTimeFormatter.BASIC_ISO_DATE)
             + String.format(Locale.ROOT, "%010d", order.getOrderId()));
-    if (orders.updateById(order) != 1) throw stale();
+    if (orders.updateById(order) != 1) {
+      throw stale();
+    }
     saveLines(order, request.getLines(), selected, amounts, List.of());
     return detail(order.getOrderId());
   }
@@ -297,8 +313,14 @@ public class OrderService {
     lockTree();
     PurchaseOrder order = lock(id, version);
     requireStatus(order, OrderStatus.DRAFT);
-    for (PurchaseOrderLine line : existingLines(id)) if (lines.deleteById(line) != 1) throw stale();
-    if (orders.deleteById(order) != 1) throw stale();
+    for (PurchaseOrderLine line : existingLines(id)) {
+      if (lines.deleteById(line) != 1) {
+        throw stale();
+      }
+    }
+    if (orders.deleteById(order) != 1) {
+      throw stale();
+    }
   }
 
   /** 状态转换只修改表头，不重算或覆盖历史快照。 */
@@ -309,7 +331,9 @@ public class OrderService {
     PurchaseOrder order = lock(id, request.getVersion());
     requireStatus(order, action.getSource());
     if ((action == OrderAction.REJECT || action == OrderAction.CLOSE)
-        && request.getReason().isBlank()) throw new ServiceException("驳回或关闭订单必须填写原因");
+        && request.getReason().isBlank()) {
+      throw new ServiceException("驳回或关闭订单必须填写原因");
+    }
     if (action == OrderAction.SUBMIT || action == OrderAction.APPROVE) {
       List<OrderLineInput> inputs =
           existingLines(id).stream().map(l -> toInput(l, order.getPriceTaxMode())).toList();
@@ -335,8 +359,9 @@ public class OrderService {
         order.setReviewRemark(request.getReason());
       }
       case CLOSE -> {
-        if (orders.unfinishedArrivals(id) > 0)
+        if (orders.unfinishedArrivals(id) > 0) {
           throw new ServiceException("存在草稿或已提交的到货单，请先处理后再关闭订单");
+        }
         order.setClosedBy(actor);
         order.setClosedTime(time);
         order.setCloseReason(request.getReason());
@@ -349,19 +374,22 @@ public class OrderService {
 
   /** 写入前以固定顺序锁住供应商、单位和料品，并批量验证分类。 */
   private Map<Long, Item> validateReferences(Long supplierId, List<OrderLineInput> input) {
-    if (supplierId == null || input == null || input.isEmpty())
+    if (supplierId == null || input == null || input.isEmpty()) {
       throw new ServiceException("供应商与明细不能为空");
+    }
     Supplier supplier =
         suppliers.selectOne(
             Wrappers.<Supplier>lambdaQuery()
                 .eq(Supplier::getSupplierId, supplierId)
                 .last("FOR UPDATE"));
-    if (supplier == null || supplier.getStatus() != EnableStatus.ENABLED)
+    if (supplier == null || supplier.getStatus() != EnableStatus.ENABLED) {
       throw new ServiceException("请选择有效且启用的供应商");
+    }
     TreeSet<Long> unitIds = new TreeSet<>(), itemIds = new TreeSet<>();
     for (OrderLineInput line : input) {
-      if (line == null || line.getUnitId() == null || line.getItemId() == null)
+      if (line == null || line.getUnitId() == null || line.getItemId() == null) {
         throw new ServiceException("请选择料品及库存单位");
+      }
       unitIds.add(line.getUnitId());
       itemIds.add(line.getItemId());
     }
@@ -395,15 +423,19 @@ public class OrderService {
       Unit unit = unitIndex.get(line.getUnitId());
       if (item == null
           || item.getStatus() != EnableStatus.ENABLED
-          || !Boolean.TRUE.equals(item.getPurchaseEnabled()))
+          || !Boolean.TRUE.equals(item.getPurchaseEnabled())) {
         throw new ServiceException("料品已失效、停用或不允许采购");
+      }
       ItemCategory category = categoryIndex.get(item.getCategoryId());
-      if (category == null || category.getStatus() != CategoryStatus.ENABLED)
+      if (category == null || category.getStatus() != CategoryStatus.ENABLED) {
         throw new ServiceException("料品分类无效或已停用");
-      if (unit == null || unit.getStatus() != EnableStatus.ENABLED)
+      }
+      if (unit == null || unit.getStatus() != EnableStatus.ENABLED) {
         throw new ServiceException("单位无效或已停用");
-      if (!line.getUnitId().equals(item.getBaseUnitId()))
+      }
+      if (!line.getUnitId().equals(item.getBaseUnitId())) {
         throw new ServiceException("暂不支持单位换算，订单单位必须等于料品库存单位");
+      }
     }
     return itemIndex;
   }
@@ -451,15 +483,18 @@ public class OrderService {
     for (int i = 0; i < input.size(); i++) {
       OrderLineInput source = input.get(i);
       PurchaseOrderLine target;
-      if (source.getLineId() == null) target = new PurchaseOrderLine();
-      else {
+      if (source.getLineId() == null) {
+        target = new PurchaseOrderLine();
+      } else {
         target = index.get(source.getLineId());
-        if (target == null || !used.add(source.getLineId()))
+        if (target == null || !used.add(source.getLineId())) {
           throw new ServiceException("明细行已变更、重复或不属于当前订单");
+        }
       }
       if (source.getExpectedDate() != null
-          && source.getExpectedDate().isBefore(order.getOrderDate()))
+          && source.getExpectedDate().isBefore(order.getOrderDate())) {
         throw new ServiceException("第 " + (i + 1) + " 行预计到货日期不能早于订单日期");
+      }
       Item item = selected.get(source.getItemId());
       LineAmounts money = calculation.getLines().get(i);
       target.setOrderId(order.getOrderId());
@@ -479,37 +514,54 @@ public class OrderService {
       target.setGrossAmount(money.getGrossAmount());
       target.setExpectedDate(source.getExpectedDate());
       target.setRemark(source.getRemark());
-      if (target.getLineId() == null) lines.insert(target);
-      else if (lines.updateById(target) != 1) throw stale();
+      if (target.getLineId() == null) {
+        lines.insert(target);
+      } else if (lines.updateById(target) != 1) {
+        throw stale();
+      }
     }
-    for (PurchaseOrderLine old : previous)
-      if (!used.contains(old.getLineId()) && lines.deleteById(old) != 1) throw stale();
+    for (PurchaseOrderLine old : previous) {
+      if (!used.contains(old.getLineId()) && lines.deleteById(old) != 1) {
+        throw stale();
+      }
+    }
   }
 
   /** 对照状态前重新取得当前提交版本的主表行锁。 */
   private PurchaseOrder lock(Long id, Integer version) {
-    if (id == null || id <= 0 || version == null || version < 0)
+    if (id == null || id <= 0 || version == null || version < 0) {
       throw new ServiceException("必须指定有效订单 ID 和版本号");
+    }
     PurchaseOrder order =
         orders.selectOne(
             Wrappers.<PurchaseOrder>lambdaQuery()
                 .eq(PurchaseOrder::getOrderId, id)
                 .last("FOR UPDATE"));
-    if (order == null) throw new ServiceException("订单不存在或已删除");
-    if (!version.equals(order.getVersion())) throw stale();
+    if (order == null) {
+      throw new ServiceException("订单不存在或已删除");
+    }
+    if (!version.equals(order.getVersion())) {
+      throw stale();
+    }
     return order;
   }
 
   /** 分类锁协调既有料品修改与采购引用写入，所有写操作先取得该锁。 */
   private void lockTree() {
-    if (categories.lockTree() == null) throw new ServiceException("分类事务锁尚未初始化");
+    if (categories.lockTree() == null) {
+      throw new ServiceException("分类事务锁尚未初始化");
+    }
   }
 
   /** 查询有效主表。 */
   private PurchaseOrder require(Long id) {
-    if (id == null || id <= 0) throw new ServiceException("订单 ID 必须为正数");
+    if (id == null || id <= 0) {
+      throw new ServiceException("订单 ID 必须为正数");
+    }
     PurchaseOrder order = orders.selectById(id);
-    if (order == null) throw new ServiceException("订单不存在或已删除");
+    if (order == null) {
+      throw new ServiceException("订单不存在或已删除");
+    }
     return order;
   }
 
@@ -523,24 +575,32 @@ public class OrderService {
 
   /** 校验状态转换及草稿操作边界。 */
   private void requireStatus(PurchaseOrder order, OrderStatus status) {
-    if (order.getStatus() != status) throw new ServiceException("当前订单状态不允许此操作，请刷新后重试");
+    if (order.getStatus() != status) {
+      throw new ServiceException("当前订单状态不允许此操作，请刷新后重试");
+    }
   }
 
   /** 首次保存后不能通过接口更改计价口径。 */
   private void requireMode(PurchaseOrder order, PriceTaxMode mode) {
-    if (order.getPriceTaxMode() != mode) throw new ServiceException("订单首次保存后不能切换计价方式");
+    if (order.getPriceTaxMode() != mode) {
+      throw new ServiceException("订单首次保存后不能切换计价方式");
+    }
   }
 
   /** 整单版本覆盖明细及全部状态操作，禁止整数溢出。 */
   private void updateVersion(PurchaseOrder order, Integer oldVersion) {
-    if (oldVersion == Integer.MAX_VALUE) throw new ServiceException("订单版本已达上限");
+    if (oldVersion == Integer.MAX_VALUE) {
+      throw new ServiceException("订单版本已达上限");
+    }
     order.setVersion(oldVersion + 1);
     if (orders.update(
             order,
             Wrappers.<PurchaseOrder>lambdaUpdate()
                 .eq(PurchaseOrder::getOrderId, order.getOrderId())
                 .eq(PurchaseOrder::getVersion, oldVersion))
-        != 1) throw stale();
+        != 1) {
+      throw stale();
+    }
   }
 
   /** 将已保存明细转成引用复核所需输入，不改变原金额。 */
@@ -566,16 +626,24 @@ public class OrderService {
   /** 参数缺失采用已约定默认值，非法配置明确拒绝，不静默替换。 */
   private int configDecimals(String key) {
     String value = orders.configValue(key);
-    if (value == null) return OrderRules.MAX_DECIMALS;
-    if (!value.matches("[0-6]")) throw new ServiceException("系统参数 " + key + " 必须为 0～6 的整数");
+    if (value == null) {
+      return OrderRules.MAX_DECIMALS;
+    }
+    if (!value.matches("[0-6]")) {
+      throw new ServiceException("系统参数 " + key + " 必须为 0～6 的整数");
+    }
     return Integer.parseInt(value);
   }
 
   /** Service 同样校验输入，避免未来 Agent 或其他内部调用绕过 Controller 校验。 */
   private <T> void validate(T request) {
-    if (request == null) throw new ServiceException("请求不能为空");
-    var violations = validator.validate(request);
-    if (!violations.isEmpty()) throw new ConstraintViolationException(violations);
+    if (request == null) {
+      throw new ServiceException("请求不能为空");
+    }
+    Set<ConstraintViolation<T>> violations = validator.validate(request);
+    if (!violations.isEmpty()) {
+      throw new ConstraintViolationException(violations);
+    }
   }
 
   /** 编号包含匹配按普通文本处理通配符。 */

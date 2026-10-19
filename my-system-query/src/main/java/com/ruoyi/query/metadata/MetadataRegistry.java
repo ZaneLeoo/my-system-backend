@@ -4,6 +4,7 @@ import com.ruoyi.query.spi.MetadataTableProvider;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
@@ -18,8 +19,8 @@ public class MetadataRegistry {
   /** 合并业务模块的显式登记，拒绝非法表名及冲突的中文名称。 */
   public MetadataRegistry(List<MetadataTableProvider> providers) {
     Map<String, String> registered = new TreeMap<>();
-    for (var provider : providers) {
-      for (var entry : provider.tables().entrySet()) {
+    for (MetadataTableProvider provider : providers) {
+      for (Entry<String, String> entry : provider.tables().entrySet()) {
         String table = entry.getKey();
         String label = entry.getValue();
         if (table == null

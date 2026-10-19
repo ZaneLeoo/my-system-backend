@@ -10,6 +10,7 @@ import com.ruoyi.business.inventory.controller.InventoryController;
 import com.ruoyi.business.inventory.dto.InventoryQuery;
 import com.ruoyi.business.inventory.service.*;
 import com.ruoyi.business.masterdata.common.MasterDataTestSchema;
+import com.ruoyi.business.masterdata.common.mapper.MasterDataReferenceMapper;
 import com.ruoyi.business.masterdata.item.dto.SaveItemRequest;
 import com.ruoyi.business.masterdata.item.service.ItemService;
 import com.ruoyi.business.masterdata.item.service.impl.ItemServiceImpl;
@@ -38,6 +39,7 @@ import com.ruoyi.business.purchase.receipt.service.ReceiptService;
 import com.ruoyi.business.purchase.receipt.vo.*;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
+import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.enums.EnableStatus;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.framework.config.JacksonConfig;
@@ -166,25 +168,29 @@ class ReceiptIntegrationTest {
     PageHelper.clearPage();
     SecurityContextHolder.clearContext();
     RequestContextHolder.resetRequestAttributes();
-    if (connection != null) connection.close();
-    if (context != null) context.close();
+    if (connection != null) {
+      connection.close();
+    }
+    if (context != null) {
+      context.close();
+    }
   }
 
   /** 草稿到冲销完整链路，来源到货与库存一致，重复命令不重复记账。 */
   @Test
   void lifecycleAndLedgerAreAtomic() {
-    var arrival = confirmed("10");
-    var draft = receipts.create(receipt(arrival, "6", null));
+    ArrivalView arrival = confirmed("10");
+    ReceiptView draft = receipts.create(receipt(arrival, "6", null));
     assertTrue(draft.getReceiptNo().startsWith("PR"));
     assertFalse(draft.getLines().get(0).getLocationEnabled());
     assertEquals("tester", draft.getCreateBy());
     stock("0");
     receiptQuantities(arrival, "0", "0");
-    var submitted = receiptAction(draft, ReceiptAction.SUBMIT, "");
+    ReceiptView submitted = receiptAction(draft, ReceiptAction.SUBMIT, "");
     stock("0");
     receiptQuantities(arrival, "6", "0");
     assertThrows(ServiceException.class, () -> receiptAction(draft, ReceiptAction.SUBMIT, ""));
-    var approved = receiptAction(submitted, ReceiptAction.APPROVE, "");
+    ReceiptView approved = receiptAction(submitted, ReceiptAction.APPROVE, "");
     stock("6");
     receiptQuantities(arrival, "0", "6");
     assertEquals(
@@ -196,7 +202,7 @@ class ReceiptIntegrationTest {
         () -> action(arrivalService.detail(arrival.getArrivalId()), ArrivalAction.VOID, "有下游"));
     assertEquals(
         1, jdbc.queryForObject("SELECT COUNT(*) FROM inventory_transaction", Integer.class));
-    var reversed = receiptAction(approved, ReceiptAction.VOID, "测试冲销");
+    ReceiptView reversed = receiptAction(approved, ReceiptAction.VOID, "测试冲销");
     assertEquals(ReceiptStatus.VOIDED, reversed.getStatus());
     stock("0");
     receiptQuantities(arrival, "0", "0");
@@ -221,8 +227,8 @@ class ReceiptIntegrationTest {
   @Test
   void locationSplitUsesAggregateSourceLimit() {
     enableLocations();
-    var arrival = confirmed("10");
-    var input = receipt(arrival, "6", 1L);
+    ArrivalView arrival = confirmed("10");
+    SaveReceiptRequest input = receipt(arrival, "6", 1L);
     input.setLines(
         new ArrayList<>(List.of(input.getLines().get(0), receiptLine(arrival, "5", 2L))));
     assertThrows(ServiceException.class, () -> receipts.create(input));
@@ -230,8 +236,8 @@ class ReceiptIntegrationTest {
     input.getLines().get(1).setLocationId(1L);
     assertThrows(ServiceException.class, () -> receipts.create(input));
     input.getLines().get(1).setLocationId(2L);
-    var draft = receipts.create(input);
-    var confirmed =
+    ReceiptView draft = receipts.create(input);
+    ReceiptView confirmed =
         receiptAction(receiptAction(draft, ReceiptAction.SUBMIT, ""), ReceiptAction.APPROVE, "");
     stock("10");
     assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM inventory_balance", Integer.class));
@@ -240,7 +246,7 @@ class ReceiptIntegrationTest {
         ReceiptProgress.FULLY_RECEIVED,
         arrivalService.detail(arrival.getArrivalId()).getReceiptProgress());
     assertEquals("A", confirmed.getLines().get(0).getLocationCode());
-    var query = new ArrivalQuery();
+    ArrivalQuery query = new ArrivalQuery();
     assertEquals(
         ReceiptProgress.FULLY_RECEIVED,
         arrivalService.list(query).getRows().get(0).getReceiptProgress());
@@ -251,16 +257,16 @@ class ReceiptIntegrationTest {
   void warehouseSplitPostsAndReversesLineDimensions() throws Exception {
     enableLocations();
     secondWarehouse();
-    var arrival = confirmed("10");
-    var request = receipt(arrival, "4", 1L);
-    var second = receiptLine(arrival, "6", null);
+    ArrivalView arrival = confirmed("10");
+    SaveReceiptRequest request = receipt(arrival, "4", 1L);
+    ReceiptLineInput second = receiptLine(arrival, "6", null);
     second.setWarehouseId(2L);
     request.getLines().add(second);
-    var draft = receipts.create(request);
+    ReceiptView draft = receipts.create(request);
     assertEquals(List.of("W / 收货仓库", "W2 / 第二仓库"), draft.getWarehouseNames());
     assertFalse(draft.getLines().get(1).getLocationEnabled());
     assertTrue(draft.getLines().get(0).getLocationEnabled());
-    var query = new ReceiptQuery();
+    ReceiptQuery query = new ReceiptQuery();
     query.setWarehouseId(2L);
     query.setPageSize(1);
     assertEquals(1, receipts.list(query).getTotal());
@@ -269,9 +275,9 @@ class ReceiptIntegrationTest {
     mvc.perform(get("/purchase/receipt/" + draft.getReceiptId()))
         .andExpect(jsonPath("$.data.warehouseId").doesNotExist())
         .andExpect(jsonPath("$.data.lines[1].warehouseId").value(2));
-    var submitted = receiptAction(draft, ReceiptAction.SUBMIT, "");
+    ReceiptView submitted = receiptAction(draft, ReceiptAction.SUBMIT, "");
     receiptQuantities(arrival, "10", "0");
-    var approved = receiptAction(submitted, ReceiptAction.APPROVE, "");
+    ReceiptView approved = receiptAction(submitted, ReceiptAction.APPROVE, "");
     assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM inventory_balance", Integer.class));
     assertEquals(
         0,
@@ -309,16 +315,16 @@ class ReceiptIntegrationTest {
   @Test
   void expectedWarehouseDoesNotRestrictActualDestination() {
     secondWarehouse();
-    var arrival = confirmed("5");
+    ArrivalView arrival = confirmed("5");
     jdbc.update("UPDATE md_warehouse SET status='1' WHERE warehouse_id=1");
     assertEquals(1, receipts.references(new ArrivalLineReferenceQuery()).getTotal());
     assertEquals(1, receipts.resolve(List.of(arrival.getLines().get(0).getLineId())).size());
-    var request = receipt(arrival, "5", null);
+    SaveReceiptRequest request = receipt(arrival, "5", null);
     assertThrows(ServiceException.class, () -> receipts.create(request));
     request.getLines().get(0).setWarehouseId(2L);
-    var draft = receipts.create(request);
+    ReceiptView draft = receipts.create(request);
     assertEquals(2L, draft.getLines().get(0).getWarehouseId());
-    var warehouse = new SaveWarehouseRequest();
+    SaveWarehouseRequest warehouse = new SaveWarehouseRequest();
     warehouse.setWarehouseId(2L);
     warehouse.setVersion(0);
     warehouse.setWarehouseCode("W2");
@@ -340,9 +346,9 @@ class ReceiptIntegrationTest {
   void crossWarehouseAggregateAndLocationOwnershipAreValidated() {
     enableLocations();
     secondWarehouse();
-    var arrival = confirmed("10");
-    var request = receipt(arrival, "6", 1L);
-    var second = receiptLine(arrival, "5", null);
+    ArrivalView arrival = confirmed("10");
+    SaveReceiptRequest request = receipt(arrival, "6", 1L);
+    ReceiptLineInput second = receiptLine(arrival, "5", null);
     second.setWarehouseId(2L);
     request.getLines().add(second);
     assertThrows(ServiceException.class, () -> receipts.create(request));
@@ -357,8 +363,8 @@ class ReceiptIntegrationTest {
     request.getLines().get(2).setWarehouseId(2L);
     assertThrows(ServiceException.class, () -> receipts.create(request));
     request.getLines().remove(2);
-    var draft = receipts.create(request);
-    var submitted = receiptAction(draft, ReceiptAction.SUBMIT, "");
+    ReceiptView draft = receipts.create(request);
+    ReceiptView submitted = receiptAction(draft, ReceiptAction.SUBMIT, "");
     assertThrows(ServiceException.class, () -> receipts.create(request));
     receiptAction(submitted, ReceiptAction.REJECT, "退回");
     receiptQuantities(arrival, "0", "0");
@@ -368,12 +374,12 @@ class ReceiptIntegrationTest {
   @Test
   void multiWarehousePostingFailureRollsBackEveryDimension() {
     secondWarehouse();
-    var arrival = confirmed("10");
-    var request = receipt(arrival, "4", null);
-    var second = receiptLine(arrival, "6", null);
+    ArrivalView arrival = confirmed("10");
+    SaveReceiptRequest request = receipt(arrival, "4", null);
+    ReceiptLineInput second = receiptLine(arrival, "6", null);
     second.setWarehouseId(2L);
     request.getLines().add(second);
-    var submitted = receiptAction(receipts.create(request), ReceiptAction.SUBMIT, "");
+    ReceiptView submitted = receiptAction(receipts.create(request), ReceiptAction.SUBMIT, "");
     jdbc.update(
         "INSERT INTO inventory_balance(warehouse_id,item_id,unit_id,quantity,version,create_by,create_time) VALUES(2,1,1,99999999999999.999999,0,'fixture',NOW())");
     assertThrows(ServiceException.class, () -> receiptAction(submitted, ReceiptAction.APPROVE, ""));
@@ -390,23 +396,23 @@ class ReceiptIntegrationTest {
   /** 未指定预计仓库的到货可参照；入库必须补选实际仓库后才能保存和记账。 */
   @Test
   void arrivalWithoutExpectedWarehouseCanBeReceived() {
-    var request = arrival(approved("10"), "6");
+    SaveArrivalRequest request = arrival(approved("10"), "6");
     request.setWarehouseId(null);
-    var arrival =
+    ArrivalView arrival =
         action(
             action(arrivalService.create(request), ArrivalAction.SUBMIT, ""),
             ArrivalAction.APPROVE,
             "");
-    var options = receipts.references(new ArrivalLineReferenceQuery());
+    PageResult<ArrivalLineReference> options = receipts.references(new ArrivalLineReferenceQuery());
     assertEquals(1, options.getTotal());
-    var option = options.getRows().get(0);
+    ArrivalLineReference option = options.getRows().get(0);
     assertNull(option.getWarehouseId());
     assertEquals(Boolean.FALSE, option.getLocationEnabled());
     assertEquals(1, receipts.resolve(List.of(option.getArrivalLineId())).size());
-    var input = receipt(arrival, "6", null);
+    SaveReceiptRequest input = receipt(arrival, "6", null);
     assertThrows(ConstraintViolationException.class, () -> receipts.create(input));
     input.getLines().get(0).setWarehouseId(1L);
-    var approved =
+    ReceiptView approved =
         receiptAction(
             receiptAction(receipts.create(input), ReceiptAction.SUBMIT, ""),
             ReceiptAction.APPROVE,
@@ -425,13 +431,13 @@ class ReceiptIntegrationTest {
   /** 撤回和驳回只释放占用，草稿逻辑删除不记账。 */
   @Test
   void withdrawRejectAndDeleteReleaseOnlyPending() {
-    var a = confirmed("10");
-    var d = receipts.create(receipt(a, "3", null));
-    var s = receiptAction(d, ReceiptAction.SUBMIT, "");
-    var w = receiptAction(s, ReceiptAction.WITHDRAW, "");
+    ArrivalView a = confirmed("10");
+    ReceiptView d = receipts.create(receipt(a, "3", null));
+    ReceiptView s = receiptAction(d, ReceiptAction.SUBMIT, "");
+    ReceiptView w = receiptAction(s, ReceiptAction.WITHDRAW, "");
     receiptQuantities(a, "0", "0");
     s = receiptAction(w, ReceiptAction.SUBMIT, "");
-    var rejected = receiptAction(s, ReceiptAction.REJECT, "修改数量");
+    ReceiptView rejected = receiptAction(s, ReceiptAction.REJECT, "修改数量");
     receiptQuantities(a, "0", "0");
     assertEquals("修改数量", rejected.getReviewRemark());
     receipts.delete(rejected.getReceiptId(), rejected.getVersion());
@@ -449,8 +455,8 @@ class ReceiptIntegrationTest {
   /** 数量精度、日期、客户端 ID、货位及仓库归属均在业务层拒绝。 */
   @Test
   void inputValidationAndWarehouseRules() {
-    var a = confirmed("10");
-    var r = receipt(a, "0", null);
+    ArrivalView a = confirmed("10");
+    SaveReceiptRequest r = receipt(a, "0", null);
     assertThrows(ConstraintViolationException.class, () -> receipts.create(r));
     r.getLines().get(0).setQuantity(new BigDecimal("1.0000001"));
     assertThrows(ConstraintViolationException.class, () -> receipts.create(r));
@@ -480,15 +486,15 @@ class ReceiptIntegrationTest {
   @Test
   void stableLineSnapshotsAndConflict() {
     enableLocations();
-    var a = confirmed("10");
-    var r = receipt(a, "4", 1L);
+    ArrivalView a = confirmed("10");
+    SaveReceiptRequest r = receipt(a, "4", 1L);
     r.setLines(new ArrayList<>(List.of(r.getLines().get(0), receiptLine(a, "2", 2L))));
-    var d = receipts.create(r);
-    var update = receipt(a, "5", 1L);
+    ReceiptView d = receipts.create(r);
+    SaveReceiptRequest update = receipt(a, "5", 1L);
     update.setReceiptId(d.getReceiptId());
     update.setVersion(d.getVersion());
     update.getLines().get(0).setLineId(d.getLines().get(0).getLineId());
-    var changed = receipts.update(update);
+    ReceiptView changed = receipts.update(update);
     assertEquals(d.getLines().get(0).getLineId(), changed.getLines().get(0).getLineId());
     assertEquals(
         1,
@@ -503,12 +509,12 @@ class ReceiptIntegrationTest {
   /** 审核原子失败后来源占用、余额和流水均保持原状态。 */
   @Test
   void postingFailureRollsBackEverything() {
-    var a = confirmed("10");
-    var d = receipts.create(receipt(a, "3", null));
-    var s = receiptAction(d, ReceiptAction.SUBMIT, "");
+    ArrivalView a = confirmed("10");
+    ReceiptView d = receipts.create(receipt(a, "3", null));
+    ReceiptView s = receiptAction(d, ReceiptAction.SUBMIT, "");
     jdbc.update(
         "UPDATE purchase_receipt SET version=2147483647 WHERE receipt_id=?", s.getReceiptId());
-    var latest = receipts.detail(s.getReceiptId());
+    ReceiptView latest = receipts.detail(s.getReceiptId());
     assertThrows(ServiceException.class, () -> receiptAction(latest, ReceiptAction.APPROVE, ""));
     stock("0");
     receiptQuantities(a, "3", "0");
@@ -520,16 +526,17 @@ class ReceiptIntegrationTest {
   /** 当前库存不足或余额溢出时整单拒绝，原流水不被修改。 */
   @Test
   void insufficientStockAndOverflowRollback() {
-    var a = confirmed("10");
-    var s = receiptAction(receipts.create(receipt(a, "3", null)), ReceiptAction.SUBMIT, "");
-    var d = receiptAction(s, ReceiptAction.APPROVE, "");
+    ArrivalView a = confirmed("10");
+    ReceiptView s = receiptAction(receipts.create(receipt(a, "3", null)), ReceiptAction.SUBMIT, "");
+    ReceiptView d = receiptAction(s, ReceiptAction.APPROVE, "");
     jdbc.update("UPDATE inventory_balance SET quantity=1");
     assertThrows(ServiceException.class, () -> receiptAction(d, ReceiptAction.VOID, "库存不足"));
     receiptQuantities(a, "0", "3");
     assertEquals(
         1, jdbc.queryForObject("SELECT COUNT(*) FROM inventory_transaction", Integer.class));
     jdbc.update("UPDATE inventory_balance SET quantity=99999999999999.999999");
-    var second = receiptAction(receipts.create(receipt(a, "1", null)), ReceiptAction.SUBMIT, "");
+    ReceiptView second =
+        receiptAction(receipts.create(receipt(a, "1", null)), ReceiptAction.SUBMIT, "");
     assertThrows(ServiceException.class, () -> receiptAction(second, ReceiptAction.APPROVE, ""));
     receiptQuantities(a, "1", "3");
   }
@@ -537,9 +544,9 @@ class ReceiptIntegrationTest {
   /** 并发提交只能占用一次剩余额度；同一单并发审核只记账一次。 */
   @Test
   void concurrentReserveAndApprove() throws Exception {
-    var a = confirmed("10");
-    var x = receipts.create(receipt(a, "7", null));
-    var y = receipts.create(receipt(a, "7", null));
+    ArrivalView a = confirmed("10");
+    ReceiptView x = receipts.create(receipt(a, "7", null));
+    ReceiptView y = receipts.create(receipt(a, "7", null));
     assertEquals(
         1,
         race(
@@ -551,9 +558,11 @@ class ReceiptIntegrationTest {
               receiptAction(y, ReceiptAction.SUBMIT, "");
               return true;
             }));
-    var winner = receipts.detail(x.getReceiptId());
-    if (winner.getStatus() != ReceiptStatus.SUBMITTED) winner = receipts.detail(y.getReceiptId());
-    var submitted = winner;
+    ReceiptView winner = receipts.detail(x.getReceiptId());
+    if (winner.getStatus() != ReceiptStatus.SUBMITTED) {
+      winner = receipts.detail(y.getReceiptId());
+    }
+    ReceiptView submitted = winner;
     assertEquals(
         1,
         race(
@@ -574,9 +583,9 @@ class ReceiptIntegrationTest {
   /** 不同单据并发首次记入同一无货位维度，不产生重复余额或丢失更新。 */
   @Test
   void concurrentFirstBalanceCreation() throws Exception {
-    var a = confirmed("10");
-    var x = receiptAction(receipts.create(receipt(a, "4", null)), ReceiptAction.SUBMIT, "");
-    var y = receiptAction(receipts.create(receipt(a, "6", null)), ReceiptAction.SUBMIT, "");
+    ArrivalView a = confirmed("10");
+    ReceiptView x = receiptAction(receipts.create(receipt(a, "4", null)), ReceiptAction.SUBMIT, "");
+    ReceiptView y = receiptAction(receipts.create(receipt(a, "6", null)), ReceiptAction.SUBMIT, "");
     assertEquals(
         2,
         race(
@@ -604,14 +613,14 @@ class ReceiptIntegrationTest {
   @Test
   void closedOrderAndMasterReferences() {
     enableLocations();
-    var a = confirmed("10");
+    ArrivalView a = confirmed("10");
     jdbc.update("UPDATE purchase_order SET status='CLOSED'");
-    var d = receipts.create(receipt(a, "10", 1L));
-    var warehouse = warehouseInput();
+    ReceiptView d = receipts.create(receipt(a, "10", 1L));
+    SaveWarehouseRequest warehouse = warehouseInput();
     warehouse.setLocationEnabled(false);
     assertThrows(
         ServiceException.class, () -> context.getBean(WarehouseService.class).update(warehouse));
-    var approved =
+    ReceiptView approved =
         receiptAction(receiptAction(d, ReceiptAction.SUBMIT, ""), ReceiptAction.APPROVE, "");
     assertEquals(
         0,
@@ -622,13 +631,13 @@ class ReceiptIntegrationTest {
     warehouse.setStatus(EnableStatus.DISABLED);
     assertThrows(
         ServiceException.class, () -> context.getBean(WarehouseService.class).update(warehouse));
-    var item = itemInput();
+    SaveItemRequest item = itemInput();
     item.setPurchaseEnabled(false);
     context.getBean(ItemService.class).update(item);
     item.setVersion(1);
     item.setStatus(EnableStatus.DISABLED);
     assertThrows(ServiceException.class, () -> context.getBean(ItemService.class).update(item));
-    var location = new SaveLocationRequest();
+    SaveLocationRequest location = new SaveLocationRequest();
     location.setLocationId(1L);
     location.setWarehouseId(1L);
     location.setLocationCode("A");
@@ -647,8 +656,8 @@ class ReceiptIntegrationTest {
   /** 独立权限、字段绑定、分页、十进制字符串和排序白名单。 */
   @Test
   void permissionPagingAndJsonContract() throws Exception {
-    var a = confirmed("10");
-    var d =
+    ArrivalView a = confirmed("10");
+    ReceiptView d =
         receiptAction(
             receiptAction(receipts.create(receipt(a, "4", null)), ReceiptAction.SUBMIT, ""),
             ReceiptAction.APPROVE,
@@ -687,7 +696,7 @@ class ReceiptIntegrationTest {
   /** 普通 DTO 的 JSON 绑定、空白规范化和校验覆盖真实保存接口。 */
   @Test
   void jsonSaveAndPrecision() throws Exception {
-    var a = confirmed("10");
+    ArrivalView a = confirmed("10");
     String body =
         """
 {"receiptDate":"2026-10-18","supplierId":1,"remark":"  中文入库  ","lines":[{"warehouseId":1,"arrivalLineId":%d,"quantity":"1.25","remark":null}]}
@@ -704,16 +713,16 @@ class ReceiptIntegrationTest {
   /** 库存查询保留停用档案，不依赖参照权限，余额零值按开关显示。 */
   @Test
   void stockQueryAfterVoidAndDisabledMasters() {
-    var a = confirmed("10");
-    var d =
+    ArrivalView a = confirmed("10");
+    ReceiptView d =
         receiptAction(
             receiptAction(receipts.create(receipt(a, "2", null)), ReceiptAction.SUBMIT, ""),
             ReceiptAction.APPROVE,
             "");
     receiptAction(d, ReceiptAction.VOID, "更正");
     jdbc.update("UPDATE md_item SET status='1'");
-    var q = new InventoryQuery();
-    var query = context.getBean(InventoryQueryService.class);
+    InventoryQuery q = new InventoryQuery();
+    InventoryQueryService query = context.getBean(InventoryQueryService.class);
     assertEquals(0, query.balances(q).getTotal());
     q.setOnlyPositive(false);
     q.setKeyword("料品");
@@ -727,7 +736,7 @@ class ReceiptIntegrationTest {
   /** 来源作废与保存、仓库停用与审核并发时，状态约束不穿透。 */
   @Test
   void masterAndSourceRaces() throws Exception {
-    var a = confirmed("10");
+    ArrivalView a = confirmed("10");
     assertEquals(
         1,
         race(
@@ -744,12 +753,12 @@ class ReceiptIntegrationTest {
   /** 多来源合并保存，预计仓库不限制实际仓库，跨供应商仍拒绝。 */
   @Test
   void mergeAndSourceContext() {
-    var a = confirmed("5");
-    var b = confirmed("7");
-    var r = receipt(a, "3", null);
+    ArrivalView a = confirmed("5");
+    ArrivalView b = confirmed("7");
+    SaveReceiptRequest r = receipt(a, "3", null);
     r.setLines(new ArrayList<>(List.of(r.getLines().get(0), receiptLine(b, "4", null))));
-    var d = receipts.create(r);
-    var confirmed =
+    ReceiptView d = receipts.create(r);
+    ReceiptView confirmed =
         receiptAction(receiptAction(d, ReceiptAction.SUBMIT, ""), ReceiptAction.APPROVE, "");
     assertEquals(2, confirmed.getLines().size());
     stock("7");
@@ -766,8 +775,8 @@ class ReceiptIntegrationTest {
   @Test
   void locationDisableRace() throws Exception {
     enableLocations();
-    var a = confirmed("10");
-    var r = new SaveLocationRequest();
+    ArrivalView a = confirmed("10");
+    SaveLocationRequest r = new SaveLocationRequest();
     r.setLocationId(1L);
     r.setWarehouseId(1L);
     r.setLocationCode("A");
@@ -790,7 +799,7 @@ class ReceiptIntegrationTest {
   /** NULL 货位唯一约束禁止重复维度，数据库独立兜底。 */
   @Test
   void nullLocationUniqueIndex() {
-    var a = confirmed("10");
+    ArrivalView a = confirmed("10");
     receiptAction(
         receiptAction(receipts.create(receipt(a, "1", null)), ReceiptAction.SUBMIT, ""),
         ReceiptAction.APPROVE,
@@ -807,25 +816,25 @@ class ReceiptIntegrationTest {
   void completedItemDoesNotInheritOtherLinesPending() {
     jdbc.execute(
         "INSERT INTO md_item(item_id,item_code,item_name,category_id,base_unit_id,create_by,create_time) VALUES(2,'I2','料品二',1,1,'fixture',NOW())");
-    var input = request();
-    var second = line();
+    SaveOrderRequest input = request();
+    OrderLineInput second = line();
     second.setItemId(2L);
     input.getLines().add(second);
-    var o = service.create(input);
+    OrderView o = service.create(input);
     o = act(act(o, OrderAction.SUBMIT, ""), OrderAction.APPROVE, "");
-    var ai = arrival(o, "10");
-    var al = new ArrivalLineInput();
+    SaveArrivalRequest ai = arrival(o, "10");
+    ArrivalLineInput al = new ArrivalLineInput();
     al.setOrderLineId(o.getLines().get(1).getLineId());
     al.setQuantity(new BigDecimal("10"));
     ai.setLines(new ArrayList<>(List.of(ai.getLines().get(0), al)));
-    var a = arrivalService.create(ai);
+    ArrivalView a = arrivalService.create(ai);
     a = action(action(a, ArrivalAction.SUBMIT, ""), ArrivalAction.APPROVE, "");
     jdbc.update("UPDATE purchase_order SET status='CLOSED'");
     receiptAction(
         receiptAction(receipts.create(receipt(a, "10", null)), ReceiptAction.SUBMIT, ""),
         ReceiptAction.APPROVE,
         "");
-    var refs =
+    MasterDataReferenceMapper refs =
         context.getBean(
             com.ruoyi.business.masterdata.common.mapper.MasterDataReferenceMapper.class);
     assertEquals(0, refs.itemPurchaseDocuments(1L, true));
@@ -837,28 +846,28 @@ class ReceiptIntegrationTest {
   /** 订单按审核入库汇总，提交只显示占用，已到货未入库包含该占用。 */
   @Test
   void orderReceiptLifecycleAndShortDelivery() {
-    var order = approved("10");
-    var a = arrivalService.create(arrival(order, "6"));
+    OrderView order = approved("10");
+    ArrivalView a = arrivalService.create(arrival(order, "6"));
     a = action(action(a, ArrivalAction.SUBMIT, ""), ArrivalAction.APPROVE, "");
-    var d = receipts.create(receipt(a, "4", null));
+    ReceiptView d = receipts.create(receipt(a, "4", null));
     orderReceipt(order.getOrderId(), "0", "0", "6", ReceiptProgress.NOT_RECEIVED);
-    var submitted = receiptAction(d, ReceiptAction.SUBMIT, "");
+    ReceiptView submitted = receiptAction(d, ReceiptAction.SUBMIT, "");
     orderReceipt(order.getOrderId(), "4", "0", "6", ReceiptProgress.NOT_RECEIVED);
-    var withdrawn = receiptAction(submitted, ReceiptAction.WITHDRAW, "");
+    ReceiptView withdrawn = receiptAction(submitted, ReceiptAction.WITHDRAW, "");
     orderReceipt(order.getOrderId(), "0", "0", "6", ReceiptProgress.NOT_RECEIVED);
-    var confirmed =
+    ReceiptView confirmed =
         receiptAction(
             receiptAction(withdrawn, ReceiptAction.SUBMIT, ""), ReceiptAction.APPROVE, "");
     orderReceipt(order.getOrderId(), "0", "4", "2", ReceiptProgress.PARTIALLY_RECEIVED);
-    var rest =
+    ReceiptView rest =
         receiptAction(
             receiptAction(receipts.create(receipt(a, "2", null)), ReceiptAction.SUBMIT, ""),
             ReceiptAction.APPROVE,
             "");
     orderReceipt(order.getOrderId(), "0", "6", "0", ReceiptProgress.PARTIALLY_RECEIVED);
-    var next = arrivalService.create(arrival(service.detail(order.getOrderId()), "4"));
+    ArrivalView next = arrivalService.create(arrival(service.detail(order.getOrderId()), "4"));
     next = action(action(next, ArrivalAction.SUBMIT, ""), ArrivalAction.APPROVE, "");
-    var last =
+    ReceiptView last =
         receiptAction(
             receiptAction(receipts.create(receipt(next, "4", null)), ReceiptAction.SUBMIT, ""),
             ReceiptAction.APPROVE,
@@ -875,24 +884,24 @@ class ReceiptIntegrationTest {
   @Test
   void orderReceiptCombinesSourcesAndLocationsWithoutMultiplication() {
     enableLocations();
-    var o = approved("10");
-    var a = arrivalService.create(arrival(o, "6"));
+    OrderView o = approved("10");
+    ArrivalView a = arrivalService.create(arrival(o, "6"));
     a = action(action(a, ArrivalAction.SUBMIT, ""), ArrivalAction.APPROVE, "");
-    var input = receipt(a, "2", 1L);
+    SaveReceiptRequest input = receipt(a, "2", 1L);
     input.getLines().add(receiptLine(a, "4", 2L));
-    var r =
+    ReceiptView r =
         receiptAction(
             receiptAction(receipts.create(input), ReceiptAction.SUBMIT, ""),
             ReceiptAction.APPROVE,
             "");
-    var b = arrivalService.create(arrival(service.detail(o.getOrderId()), "4"));
+    ArrivalView b = arrivalService.create(arrival(service.detail(o.getOrderId()), "4"));
     b = action(action(b, ArrivalAction.SUBMIT, ""), ArrivalAction.APPROVE, "");
     receiptAction(receipts.create(receipt(b, "3", 1L)), ReceiptAction.SUBMIT, "");
     orderReceipt(o.getOrderId(), "3", "6", "4", ReceiptProgress.PARTIALLY_RECEIVED);
-    var unrelated = approved("5");
-    var q = new OrderQuery();
+    OrderView unrelated = approved("5");
+    OrderQuery q = new OrderQuery();
     q.setPageSize(1);
-    var page = service.list(q);
+    PageResult<OrderView> page = service.list(q);
     assertEquals(2, page.getTotal());
     assertEquals(1, page.getRows().size());
     assertEquals(
@@ -910,23 +919,23 @@ class ReceiptIntegrationTest {
   void orderReceiptProgressUsesEachOrderedLineAndFiltersDeleted() {
     jdbc.execute(
         "INSERT INTO md_item(item_id,item_code,item_name,category_id,base_unit_id,create_by,create_time) VALUES(2,'I2','箱装料品',1,2,'fixture',NOW())");
-    var request = request();
+    SaveOrderRequest request = request();
     request.getLines().get(0).setQuantity(BigDecimal.ONE);
-    var second = line();
+    OrderLineInput second = line();
     second.setItemId(2L);
     second.setUnitId(2L);
     second.setQuantity(new BigDecimal("1000"));
     request.getLines().add(second);
-    var o = service.create(request);
+    OrderView o = service.create(request);
     o = act(act(o, OrderAction.SUBMIT, ""), OrderAction.APPROVE, "");
-    var ai = arrival(o, "1");
-    var al = new ArrivalLineInput();
+    SaveArrivalRequest ai = arrival(o, "1");
+    ArrivalLineInput al = new ArrivalLineInput();
     al.setOrderLineId(o.getLines().get(1).getLineId());
     al.setQuantity(new BigDecimal("1000"));
     ai.getLines().add(al);
-    var a = arrivalService.create(ai);
+    ArrivalView a = arrivalService.create(ai);
     a = action(action(a, ArrivalAction.SUBMIT, ""), ArrivalAction.APPROVE, "");
-    var r =
+    ReceiptView r =
         receiptAction(
             receiptAction(receipts.create(receipt(a, "1", null)), ReceiptAction.SUBMIT, ""),
             ReceiptAction.APPROVE,
@@ -935,7 +944,7 @@ class ReceiptIntegrationTest {
         ReceiptProgress.PARTIALLY_RECEIVED, service.detail(o.getOrderId()).getReceiptProgress());
     assertEquals(
         0, service.detail(o.getOrderId()).getLines().get(1).getReceivedQuantity().signum());
-    var query = new OrderQuery();
+    OrderQuery query = new OrderQuery();
     assertEquals(
         ReceiptProgress.PARTIALLY_RECEIVED,
         service.list(query).getRows().get(0).getReceiptProgress());
@@ -953,13 +962,13 @@ class ReceiptIntegrationTest {
   /** 关联入库按稳定订单来源过滤，合并单只返回一次并沿用列表权限。 */
   @Test
   void relatedReceiptsFilterBySourceOrder() throws Exception {
-    var a = confirmed("10");
-    var b = confirmed("5");
-    var input = receipt(a, "2", null);
+    ArrivalView a = confirmed("10");
+    ArrivalView b = confirmed("5");
+    SaveReceiptRequest input = receipt(a, "2", null);
     input.getLines().add(receiptLine(b, "3", null));
-    var r = receipts.create(input);
-    var c = approved("8");
-    var q = new ReceiptQuery();
+    ReceiptView r = receipts.create(input);
+    OrderView c = approved("8");
+    ReceiptQuery q = new ReceiptQuery();
     q.setOrderId(a.getLines().get(0).getOrderId());
     assertEquals(1, receipts.list(q).getTotal());
     q.setOrderId(b.getLines().get(0).getOrderId());
@@ -984,26 +993,26 @@ class ReceiptIntegrationTest {
   /** 详情和列表均使用同一审核口径，数量比较不依赖 BigDecimal 小数位。 */
   private void orderReceipt(
       Long id, String pending, String received, String remaining, ReceiptProgress progress) {
-    var view = service.detail(id);
-    var row = view.getLines().get(0);
+    OrderView view = service.detail(id);
+    OrderLineView row = view.getLines().get(0);
     assertEquals(0, row.getPendingReceiptQuantity().compareTo(new BigDecimal(pending)));
     assertEquals(0, row.getReceivedQuantity().compareTo(new BigDecimal(received)));
     assertEquals(0, row.getArrivedNotReceivedQuantity().compareTo(new BigDecimal(remaining)));
     assertEquals(progress, view.getReceiptProgress());
-    var q = new OrderQuery();
+    OrderQuery q = new OrderQuery();
     q.setOrderNo(view.getOrderNo());
     assertEquals(progress, service.list(q).getRows().get(0).getReceiptProgress());
   }
 
   /** 创建已审核到货，作为入库唯一正式来源。 */
   private ArrivalView confirmed(String quantity) {
-    var a = arrivalService.create(arrival(approved(quantity), quantity));
+    ArrivalView a = arrivalService.create(arrival(approved(quantity), quantity));
     return action(action(a, ArrivalAction.SUBMIT, ""), ArrivalAction.APPROVE, "");
   }
 
   /** 创建一条入库输入，数量保持十进制。 */
   private ReceiptLineInput receiptLine(ArrivalView a, String quantity, Long location) {
-    var r = new ReceiptLineInput();
+    ReceiptLineInput r = new ReceiptLineInput();
     r.setArrivalLineId(a.getLines().get(0).getLineId());
     r.setQuantity(new BigDecimal(quantity));
     r.setWarehouseId(a.getWarehouseId());
@@ -1013,7 +1022,7 @@ class ReceiptIntegrationTest {
 
   /** 构造无内部字段的整单请求。 */
   private SaveReceiptRequest receipt(ArrivalView a, String quantity, Long location) {
-    var r = new SaveReceiptRequest();
+    SaveReceiptRequest r = new SaveReceiptRequest();
     r.setReceiptDate(a.getArrivalDate());
     r.setSupplierId(a.getSupplierId());
     r.setLines(new ArrayList<>(List.of(receiptLine(a, quantity, location))));
@@ -1022,7 +1031,7 @@ class ReceiptIntegrationTest {
 
   /** 按当前版本执行入库命令。 */
   private ReceiptView receiptAction(ReceiptView view, ReceiptAction action, String reason) {
-    var r = new ReceiptActionRequest();
+    ReceiptActionRequest r = new ReceiptActionRequest();
     r.setVersion(view.getVersion());
     r.setReason(reason);
     return receipts.transition(view.getReceiptId(), action, r);
@@ -1039,7 +1048,7 @@ class ReceiptIntegrationTest {
 
   /** 校验到货行累计数与操作期望相符。 */
   private void receiptQuantities(ArrivalView a, String pending, String received) {
-    var r = arrivalService.detail(a.getArrivalId()).getLines().get(0);
+    ArrivalLineView r = arrivalService.detail(a.getArrivalId()).getLines().get(0);
     assertEquals(0, r.getPendingReceiptQuantity().compareTo(new BigDecimal(pending)));
     assertEquals(0, r.getReceivedQuantity().compareTo(new BigDecimal(received)));
   }
@@ -1217,7 +1226,7 @@ class ReceiptIntegrationTest {
     CountDownLatch start = new CountDownLatch(1);
     try {
       List<Future<Boolean>> results = new ArrayList<>();
-      for (Supplier<Boolean> task : List.of(first, second))
+      for (Supplier<Boolean> task : List.of(first, second)) {
         results.add(
             pool.submit(
                 () -> {
@@ -1231,6 +1240,7 @@ class ReceiptIntegrationTest {
                     SecurityContextHolder.clearContext();
                   }
                 }));
+      }
       start.countDown();
       return (results.get(0).get(15, TimeUnit.SECONDS) ? 1 : 0)
           + (results.get(1).get(15, TimeUnit.SECONDS) ? 1 : 0);

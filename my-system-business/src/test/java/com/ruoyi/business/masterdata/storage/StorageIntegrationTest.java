@@ -6,12 +6,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.autoconfigure.PageHelperAutoConfiguration;
+import com.ruoyi.business.masterdata.location.dto.LocationQuery;
+import com.ruoyi.business.masterdata.location.dto.SaveLocationRequest;
+import com.ruoyi.business.masterdata.location.vo.LocationView;
 import com.ruoyi.business.masterdata.warehouse.controller.WarehouseController;
 import com.ruoyi.business.masterdata.warehouse.dto.SaveWarehouseRequest;
 import com.ruoyi.business.masterdata.warehouse.dto.WarehouseQuery;
 import com.ruoyi.business.masterdata.warehouse.service.WarehouseService;
+import com.ruoyi.business.masterdata.warehouse.vo.WarehouseView;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
+import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.enums.EnableStatus;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.framework.config.JacksonConfig;
@@ -22,6 +27,7 @@ import com.ruoyi.framework.web.service.PermissionService;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
+import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
@@ -87,8 +93,9 @@ class StorageIntegrationTest {
     context.refresh();
     jdbc = new JdbcTemplate(source);
     Path migration = Path.of("../sql/migrations/20261017_03_warehouse_location.sql");
-    if (!Files.exists(migration))
+    if (!Files.exists(migration)) {
       migration = Path.of("sql/migrations/20261017_03_warehouse_location.sql");
+    }
     String schema =
         Files.readString(migration)
             .split("START TRANSACTION;")[0]
@@ -96,8 +103,12 @@ class StorageIntegrationTest {
             .replaceAll("ENGINE=InnoDB[^;]*", "");
     schemaConnection = source.getConnection();
     com.ruoyi.business.masterdata.common.MasterDataTestSchema.create(schemaConnection);
-    try (var sql = schemaConnection.createStatement()) {
-      for (String statement : schema.split(";")) if (!statement.isBlank()) sql.execute(statement);
+    try (Statement sql = schemaConnection.createStatement()) {
+      for (String statement : schema.split(";")) {
+        if (!statement.isBlank()) {
+          sql.execute(statement);
+        }
+      }
     }
 
     service = context.getBean(WarehouseService.class);
@@ -130,8 +141,12 @@ class StorageIntegrationTest {
     PageHelper.clearPage();
     SecurityContextHolder.clearContext();
     RequestContextHolder.resetRequestAttributes();
-    if (schemaConnection != null) schemaConnection.close();
-    if (context != null) context.close();
+    if (schemaConnection != null) {
+      schemaConnection.close();
+    }
+    if (context != null) {
+      context.close();
+    }
   }
 
   /** 默认值、绑定、规范化、参数约束与响应字段均符合公开约定。 */
@@ -154,17 +169,17 @@ class StorageIntegrationTest {
                     org.hamcrest.Matchers.matchesPattern(
                         "\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}")))
         .andExpect(jsonPath("$.data.delFlag").doesNotExist());
-    var invalid = warehouse(" ", true);
+    SaveWarehouseRequest invalid = warehouse(" ", true);
     assertThrows(
         jakarta.validation.ConstraintViolationException.class, () -> service.create(invalid));
     invalid.setWarehouseCode("X");
     invalid.setLocationEnabled(null);
     assertThrows(
         jakarta.validation.ConstraintViolationException.class, () -> service.create(invalid));
-    var explicit = warehouse("ID", true);
+    SaveWarehouseRequest explicit = warehouse("ID", true);
     explicit.setWarehouseId(99L);
     assertThrows(ServiceException.class, () -> service.create(explicit));
-    var query = new WarehouseQuery();
+    WarehouseQuery query = new WarehouseQuery();
     query.setSortField("warehouse_code; DROP TABLE md_location");
     assertThrows(jakarta.validation.ConstraintViolationException.class, () -> service.list(query));
     query.setSortField(null);
@@ -176,14 +191,14 @@ class StorageIntegrationTest {
   /** 同仓编码占用包含删除记录，不同仓库可同码，名称可重复。 */
   @Test
   void uniquenessAndImmutableWarehouse() {
-    var w1 = service.create(warehouse("W1", true));
-    var w2 = service.create(warehouse("W2", true));
+    WarehouseView w1 = service.create(warehouse("W1", true));
+    WarehouseView w2 = service.create(warehouse("W2", true));
     assertThrows(ServiceException.class, () -> service.create(warehouse("w1", true)));
-    var a = locations.create(location(w1.getWarehouseId(), "A-01"));
+    LocationView a = locations.create(location(w1.getWarehouseId(), "A-01"));
     locations.create(location(w2.getWarehouseId(), "a-01"));
     assertThrows(
         ServiceException.class, () -> locations.create(location(w1.getWarehouseId(), "a-01")));
-    var changed = location(w2.getWarehouseId(), "A-02");
+    SaveLocationRequest changed = location(w2.getWarehouseId(), "A-02");
     changed.setLocationId(a.getLocationId());
     changed.setVersion(0);
     assertThrows(ServiceException.class, () -> locations.update(changed));
@@ -198,20 +213,20 @@ class StorageIntegrationTest {
   /** 父仓停用不改写货位状态，阻止新增及重新启用，但允许维护已有货位。 */
   @Test
   void disabledWarehouseKeepsLocationStatus() {
-    var w = service.create(warehouse("W", true));
-    var l = locations.create(location(w.getWarehouseId(), "A"));
-    var off = warehouse("W", true);
+    WarehouseView w = service.create(warehouse("W", true));
+    LocationView l = locations.create(location(w.getWarehouseId(), "A"));
+    SaveWarehouseRequest off = warehouse("W", true);
     off.setWarehouseId(w.getWarehouseId());
     off.setVersion(0);
     off.setStatus(EnableStatus.DISABLED);
     service.update(off);
     assertEquals(EnableStatus.ENABLED, locations.detail(l.getLocationId()).getStatus());
     assertThrows(ServiceException.class, () -> locations.create(location(w.getWarehouseId(), "B")));
-    var q = new com.ruoyi.business.masterdata.location.dto.LocationQuery();
+    LocationQuery q = new com.ruoyi.business.masterdata.location.dto.LocationQuery();
     q.setWarehouseId(w.getWarehouseId());
     assertEquals(0, references.locations(q).getTotal());
     assertEquals(1, references.locations(w.getWarehouseId(), List.of(l.getLocationId())).size());
-    var edit = location(w.getWarehouseId(), "A2");
+    SaveLocationRequest edit = location(w.getWarehouseId(), "A2");
     edit.setLocationId(l.getLocationId());
     edit.setVersion(0);
     locations.update(edit);
@@ -231,14 +246,14 @@ class StorageIntegrationTest {
   /** 关闭货位管理和删除仓库均受全部未删除货位保护，实体删除触发审计。 */
   @Test
   void versionsAuditAndParentGuards() {
-    var w = service.create(warehouse("W", true));
-    var l = locations.create(location(w.getWarehouseId(), "A"));
-    var edit = warehouse("W", false);
+    WarehouseView w = service.create(warehouse("W", true));
+    LocationView l = locations.create(location(w.getWarehouseId(), "A"));
+    SaveWarehouseRequest edit = warehouse("W", false);
     edit.setWarehouseId(w.getWarehouseId());
     edit.setVersion(0);
     assertThrows(ServiceException.class, () -> service.update(edit));
     assertThrows(ServiceException.class, () -> service.delete(w.getWarehouseId(), 0));
-    var le = location(w.getWarehouseId(), "A");
+    SaveLocationRequest le = location(w.getWarehouseId(), "A");
     le.setLocationId(l.getLocationId());
     le.setVersion(0);
     le.setStatus(EnableStatus.DISABLED);
@@ -275,13 +290,15 @@ class StorageIntegrationTest {
   /** 分页在全量结果上排序，包含条件中的通配符按字面量处理。 */
   @Test
   void paginationAndFilters() {
-    for (int i = 0; i < 23; i++) service.create(warehouse(String.format("W%02d", i), i % 2 == 0));
+    for (int i = 0; i < 23; i++) {
+      service.create(warehouse(String.format("W%02d", i), i % 2 == 0));
+    }
     service.create(warehouse("W_%", false));
-    var q = new WarehouseQuery();
+    WarehouseQuery q = new WarehouseQuery();
     q.setPageNum(2);
     q.setPageSize(10);
     q.setSortDirection("desc");
-    var page = service.list(q);
+    PageResult<WarehouseView> page = service.list(q);
     assertEquals(24, page.getTotal());
     assertEquals(10, page.getRows().size());
     assertNull(PageHelper.getLocalPage());
@@ -291,9 +308,11 @@ class StorageIntegrationTest {
     q.setWarehouseCode(null);
     q.setLocationEnabled(true);
     assertEquals(12, service.list(q).getTotal());
-    var w = service.create(warehouse("LOC", true));
-    for (int i = 0; i < 23; i++) locations.create(location(w.getWarehouseId(), "L" + i));
-    var lq = new com.ruoyi.business.masterdata.location.dto.LocationQuery();
+    WarehouseView w = service.create(warehouse("LOC", true));
+    for (int i = 0; i < 23; i++) {
+      locations.create(location(w.getWarehouseId(), "L" + i));
+    }
+    LocationQuery lq = new com.ruoyi.business.masterdata.location.dto.LocationQuery();
     lq.setWarehouseId(w.getWarehouseId());
     lq.setPageSize(10);
     lq.setPageNum(2);
@@ -305,8 +324,8 @@ class StorageIntegrationTest {
   /** 参照权限不包含维护权限，货位上下文不泄露内部字段。 */
   @Test
   void independentPermissionsAndReferenceShape() throws Exception {
-    var w = service.create(warehouse("W", true));
-    var l = locations.create(location(w.getWarehouseId(), "A"));
+    WarehouseView w = service.create(warehouse("W", true));
+    LocationView l = locations.create(location(w.getWarehouseId(), "A"));
     login("warehouse-picker", Set.of("masterdata:warehouse:reference"));
     mvc.perform(get("/masterdata/reference/warehouses"))
         .andExpect(jsonPath("$.data.rows[0].warehouseCode").value("W"))
@@ -336,9 +355,9 @@ class StorageIntegrationTest {
   /** 批量回显按顺序去重并排除删除与跨仓记录。 */
   @Test
   void scopedResolveAndDisabledCandidates() {
-    var w = service.create(warehouse("W", true));
-    var other = service.create(warehouse("OTHER", false));
-    var l = locations.create(location(w.getWarehouseId(), "A"));
+    WarehouseView w = service.create(warehouse("W", true));
+    WarehouseView other = service.create(warehouse("OTHER", false));
+    LocationView l = locations.create(location(w.getWarehouseId(), "A"));
     assertEquals(
         0, references.locations(other.getWarehouseId(), List.of(l.getLocationId())).size());
     assertEquals(
@@ -352,8 +371,8 @@ class StorageIntegrationTest {
   /** 并发新增货位与关闭管理只允许一个成功，不能留下关闭管理的有效货位。 */
   @Test
   void concurrentCreateAndDisableLocations() throws Exception {
-    var w = service.create(warehouse("W", true));
-    var edit = warehouse("W", false);
+    WarehouseView w = service.create(warehouse("W", true));
+    SaveWarehouseRequest edit = warehouse("W", false);
     edit.setWarehouseId(w.getWarehouseId());
     edit.setVersion(0);
     assertEquals(
@@ -375,7 +394,7 @@ class StorageIntegrationTest {
   /** 并发删除父仓与创建货位只允许一个成功。 */
   @Test
   void concurrentCreateAndDeleteWarehouse() throws Exception {
-    var w = service.create(warehouse("W", true));
+    WarehouseView w = service.create(warehouse("W", true));
     assertEquals(
         1,
         race(
@@ -414,7 +433,7 @@ class StorageIntegrationTest {
   /** 同仓并发货位编码冲突受父锁和唯一索引共同保护。 */
   @Test
   void concurrentLocationCodeConflict() throws Exception {
-    var warehouse = service.create(warehouse("W", true));
+    WarehouseView warehouse = service.create(warehouse("W", true));
     assertEquals(
         1,
         race(
@@ -432,12 +451,12 @@ class StorageIntegrationTest {
   /** 两个旧页面修改同一货位只能有一个版本提交。 */
   @Test
   void concurrentLocationEdits() throws Exception {
-    var w = service.create(warehouse("W", true));
-    var l = locations.create(location(w.getWarehouseId(), "A"));
-    var a = location(w.getWarehouseId(), "B");
+    WarehouseView w = service.create(warehouse("W", true));
+    LocationView l = locations.create(location(w.getWarehouseId(), "A"));
+    SaveLocationRequest a = location(w.getWarehouseId(), "B");
     a.setLocationId(l.getLocationId());
     a.setVersion(0);
-    var b = location(w.getWarehouseId(), "C");
+    SaveLocationRequest b = location(w.getWarehouseId(), "C");
     b.setLocationId(l.getLocationId());
     b.setVersion(0);
     assertEquals(
@@ -456,7 +475,7 @@ class StorageIntegrationTest {
 
   /** 构建规范化仓库请求。 */
   private SaveWarehouseRequest warehouse(String code, boolean enabled) {
-    var request = new SaveWarehouseRequest();
+    SaveWarehouseRequest request = new SaveWarehouseRequest();
     request.setWarehouseCode(code);
     request.setWarehouseName(" 同名仓库 ");
     request.setLocationEnabled(enabled);
@@ -466,7 +485,8 @@ class StorageIntegrationTest {
   /** 构建规范化货位请求。 */
   private com.ruoyi.business.masterdata.location.dto.SaveLocationRequest location(
       Long warehouseId, String code) {
-    var request = new com.ruoyi.business.masterdata.location.dto.SaveLocationRequest();
+    SaveLocationRequest request =
+        new com.ruoyi.business.masterdata.location.dto.SaveLocationRequest();
     request.setWarehouseId(warehouseId);
     request.setLocationCode(code);
     request.setLocationName(" 同名货位 ");
@@ -477,7 +497,7 @@ class StorageIntegrationTest {
   private com.ruoyi.common.core.page.PageResult<
           com.ruoyi.business.masterdata.location.vo.LocationView>
       query(Long warehouseId) {
-    var query = new com.ruoyi.business.masterdata.location.dto.LocationQuery();
+    LocationQuery query = new com.ruoyi.business.masterdata.location.dto.LocationQuery();
     query.setWarehouseId(warehouseId);
     return locations.list(query);
   }

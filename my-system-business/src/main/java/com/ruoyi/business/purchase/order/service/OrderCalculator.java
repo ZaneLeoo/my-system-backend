@@ -20,25 +20,34 @@ public class OrderCalculator {
       List<? extends AmountInput> inputs,
       int quantityDecimals,
       int priceDecimals) {
-    if (mode == null || inputs == null || inputs.isEmpty() || inputs.size() > OrderRules.MAX_LINES)
+    if (mode == null
+        || inputs == null
+        || inputs.isEmpty()
+        || inputs.size() > OrderRules.MAX_LINES) {
       throw new ServiceException("订单须包含 1～200 行有效明细及计价方式");
+    }
     if (quantityDecimals < 0
         || quantityDecimals > OrderRules.MAX_DECIMALS
         || priceDecimals < 0
-        || priceDecimals > OrderRules.MAX_DECIMALS) throw new ServiceException("订单精度规则无效");
+        || priceDecimals > OrderRules.MAX_DECIMALS) {
+      throw new ServiceException("订单精度规则无效");
+    }
     BigDecimal net = BigDecimal.ZERO, tax = BigDecimal.ZERO, gross = BigDecimal.ZERO;
     List<LineAmounts> lines = new ArrayList<>();
     for (int i = 0; i < inputs.size(); i++) {
       AmountInput input = inputs.get(i);
-      if (input == null) throw new ServiceException("第 " + (i + 1) + " 行不能为空");
+      if (input == null) {
+        throw new ServiceException("第 " + (i + 1) + " 行不能为空");
+      }
       checkNumber(input.getQuantity(), quantityDecimals, true, "数量", i);
       checkNumber(input.getUnitPrice(), priceDecimals, false, "单价", i);
       BigDecimal rate = input.getTaxRate();
       if (rate == null
           || rate.signum() < 0
           || rate.compareTo(new BigDecimal("100")) > 0
-          || rate.stripTrailingZeros().scale() > 2)
+          || rate.stripTrailingZeros().scale() > 2) {
         throw new ServiceException("第 " + (i + 1) + " 行须填写 0～100 且最多两位小数的税率");
+      }
       BigDecimal factor = BigDecimal.ONE.add(rate.movePointLeft(2));
       LineAmounts line = new LineAmounts();
       if (mode == PriceTaxMode.TAX_INCLUDED) {
@@ -57,8 +66,9 @@ public class OrderCalculator {
         line.setGrossAmount(line.getNetAmount().add(line.getTax()));
       }
       if (line.getNetPrice().compareTo(OrderRules.PRICE_LIMIT) >= 0
-          || line.getGrossPrice().compareTo(OrderRules.PRICE_LIMIT) >= 0)
+          || line.getGrossPrice().compareTo(OrderRules.PRICE_LIMIT) >= 0) {
         throw new ServiceException("第 " + (i + 1) + " 行换算后的单价超出允许范围");
+      }
       checkMoney(line.getGrossAmount());
       net = net.add(line.getNetAmount());
       tax = tax.add(line.getTax());
@@ -81,7 +91,7 @@ public class OrderCalculator {
         || value.signum() < 0
         || (positive && value.signum() == 0)
         || value.stripTrailingZeros().scale() > decimals
-        || value.compareTo(positive ? OrderRules.QUANTITY_LIMIT : OrderRules.PRICE_LIMIT) >= 0)
+        || value.compareTo(positive ? OrderRules.QUANTITY_LIMIT : OrderRules.PRICE_LIMIT) >= 0) {
       throw new ServiceException(
           "第 "
               + (index + 1)
@@ -92,6 +102,7 @@ public class OrderCalculator {
               + " 位小数且整数部分最多 "
               + (positive ? 9 : 12)
               + " 位");
+    }
   }
 
   /** 统一逐行金额舍入方式。 */
@@ -101,6 +112,8 @@ public class OrderCalculator {
 
   /** 数据库溢出前返回可理解的业务提示。 */
   private void checkMoney(BigDecimal value) {
-    if (value.compareTo(OrderRules.MONEY_LIMIT) >= 0) throw new ServiceException("订单金额超出允许范围");
+    if (value.compareTo(OrderRules.MONEY_LIMIT) >= 0) {
+      throw new ServiceException("订单金额超出允许范围");
+    }
   }
 }

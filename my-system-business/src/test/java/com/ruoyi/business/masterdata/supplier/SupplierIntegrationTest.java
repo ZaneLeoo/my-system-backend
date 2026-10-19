@@ -14,6 +14,7 @@ import com.ruoyi.business.masterdata.supplier.service.impl.SupplierServiceImpl;
 import com.ruoyi.business.masterdata.supplier.vo.SupplierView;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
+import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.enums.EnableStatus;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.framework.config.JacksonConfig;
@@ -24,7 +25,9 @@ import com.ruoyi.framework.web.service.PermissionService;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
+import java.sql.Statement;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
@@ -87,15 +90,21 @@ class SupplierIntegrationTest {
     context.refresh();
     jdbc = new JdbcTemplate(source);
     Path migration = Path.of("../sql/migrations/20261017_01_supplier.sql");
-    if (!Files.exists(migration)) migration = Path.of("sql/migrations/20261017_01_supplier.sql");
+    if (!Files.exists(migration)) {
+      migration = Path.of("sql/migrations/20261017_01_supplier.sql");
+    }
     String schema =
         Files.readString(migration)
             .split("START TRANSACTION;")[0]
             .replaceAll("(?m)^SET NAMES.*;", "")
             .replaceAll("ENGINE=InnoDB[^;]*", "");
     schemaConnection = source.getConnection();
-    try (var sql = schemaConnection.createStatement()) {
-      for (String statement : schema.split(";")) if (!statement.isBlank()) sql.execute(statement);
+    try (Statement sql = schemaConnection.createStatement()) {
+      for (String statement : schema.split(";")) {
+        if (!statement.isBlank()) {
+          sql.execute(statement);
+        }
+      }
     }
     service = context.getBean(SupplierService.class);
     com.ruoyi.business.masterdata.common.MasterDataTestSchema.create(schemaConnection);
@@ -121,8 +130,12 @@ class SupplierIntegrationTest {
     PageHelper.clearPage();
     SecurityContextHolder.clearContext();
     RequestContextHolder.resetRequestAttributes();
-    if (schemaConnection != null) schemaConnection.close();
-    if (context != null) context.close();
+    if (schemaConnection != null) {
+      schemaConnection.close();
+    }
+    if (context != null) {
+      context.close();
+    }
   }
 
   /** 审计保护、启停修改、版本递增和实体逻辑删除均有效。 */
@@ -151,7 +164,7 @@ class SupplierIntegrationTest {
     service.delete(created.getSupplierId(), 1);
     assertThrows(ServiceException.class, () -> service.detail(created.getSupplierId()));
     assertEquals(0, service.list(new SupplierQuery()).getTotal());
-    var deleted =
+    Map<String, Object> deleted =
         jdbc.queryForMap(
             "SELECT del_flag, create_by, update_by, update_time FROM md_supplier WHERE supplier_id=?",
             created.getSupplierId());
@@ -185,12 +198,13 @@ class SupplierIntegrationTest {
   /** 分页总数独立于页大小，排序作用于全部结果，组合条件及通配字符按文本处理。 */
   @Test
   void serverPaginationSortAndLiteralFilters() {
-    for (String code : List.of("D", "A", "C", "B", "E"))
+    for (String code : List.of("D", "A", "C", "B", "E")) {
       service.create(request(null, code, "供应商" + code, null));
+    }
     SupplierQuery query = new SupplierQuery();
     query.setPageSize(2);
     query.setPageNum(2);
-    var second = service.list(query);
+    PageResult<SupplierView> second = service.list(query);
     assertEquals(5, second.getTotal());
     assertEquals(
         List.of("C", "D"), second.getRows().stream().map(SupplierView::getSupplierCode).toList());
@@ -271,7 +285,7 @@ class SupplierIntegrationTest {
   /** 非法查询、JSON 和版本参数通过统一 R 错误响应拒绝。 */
   @Test
   void invalidInputUsesBusinessErrors() throws Exception {
-    for (var entry :
+    for (Entry<String, String> entry :
         Map.of(
                 "pageNum",
                 "0",
@@ -332,7 +346,7 @@ class SupplierIntegrationTest {
     assertEquals("", cleared.getContactName());
     assertEquals("", cleared.getContactPhone());
     assertEquals("", cleared.getAddress());
-    for (var field :
+    for (Entry<String, Integer> field :
         Map.of("shortName", 100, "contactName", 64, "contactPhone", 64, "address", 500)
             .entrySet()) {
       mvc.perform(
@@ -351,7 +365,9 @@ class SupplierIntegrationTest {
   /** 参照权限独立有效，完整选项保留停用项、排除已删除项且不泄露内部字段。 */
   @Test
   void referencesHaveIndependentPermissionsAndCompleteProjection() throws Exception {
-    for (int i = 0; i < 101; i++) service.create(request(null, "S" + i, "供应商" + i, null));
+    for (int i = 0; i < 101; i++) {
+      service.create(request(null, "S" + i, "供应商" + i, null));
+    }
     SupplierView disabled = service.create(request(null, "OFF", "停用供应商", null));
     SaveSupplierRequest edit = request(disabled.getSupplierId(), "OFF", "停用供应商", 0);
     edit.setStatus(EnableStatus.DISABLED);

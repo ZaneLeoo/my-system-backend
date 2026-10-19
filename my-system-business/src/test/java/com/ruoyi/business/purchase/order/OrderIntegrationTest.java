@@ -139,26 +139,30 @@ class OrderIntegrationTest {
     PageHelper.clearPage();
     SecurityContextHolder.clearContext();
     RequestContextHolder.resetRequestAttributes();
-    if (connection != null) connection.close();
-    if (context != null) context.close();
+    if (connection != null) {
+      connection.close();
+    }
+    if (context != null) {
+      context.close();
+    }
   }
 
   /** 两种口径、零价、逐行舍入及禁止换算单价反算均符合公式。 */
   @Test
   void exactCalculationsAndRounding() {
     OrderCalculator calc = context.getBean(OrderCalculator.class);
-    var included =
+    OrderCalculation included =
         calc.calculate(PriceTaxMode.TAX_INCLUDED, List.of(amount("10", "110", "10")), 6, 6);
     assertEquals(new BigDecimal("1000.00"), included.getNetAmount());
     assertEquals(new BigDecimal("100.00"), included.getTax());
     assertEquals(new BigDecimal("1100.00"), included.getGrossAmount());
-    var excluded =
+    OrderCalculation excluded =
         calc.calculate(PriceTaxMode.TAX_EXCLUDED, List.of(amount("10", "100", "10")), 6, 6);
     assertEquals(included.getGrossAmount(), excluded.getGrossAmount());
-    var tail =
+    OrderCalculation tail =
         calc.calculate(PriceTaxMode.TAX_INCLUDED, List.of(amount("100000", "1", "10")), 6, 6);
     assertEquals(new BigDecimal("90909.09"), tail.getNetAmount());
-    var half =
+    OrderCalculation half =
         calc.calculate(
             PriceTaxMode.TAX_EXCLUDED,
             List.of(amount("1", "0.105", "0"), amount("1", "0.105", "0")),
@@ -384,9 +388,10 @@ class OrderIntegrationTest {
         List.of(
             json.replace("\"10\"}]", "null}]"),
             json.replace("\"110\"", "\"0.0000001\""),
-            json.replace("TAX_INCLUDED", "other")))
+            json.replace("TAX_INCLUDED", "other"))) {
       mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON).content(invalid))
           .andExpect(jsonPath("$.code").value(500));
+    }
     Long id = service.list(new OrderQuery()).getRows().get(0).getOrderId();
     login(Set.of("purchase:order:list"));
     mvc.perform(get(BASE + "/list")).andExpect(jsonPath("$.code").value(200));
@@ -411,7 +416,9 @@ class OrderIntegrationTest {
   /** 列表分页保留总数，排序过滤作用于所有记录，SQL 失败清理分页线程。 */
   @Test
   void paginationAndSortWhitelist() {
-    for (int i = 0; i < 5; i++) service.create(request());
+    for (int i = 0; i < 5; i++) {
+      service.create(request());
+    }
     OrderQuery query = new OrderQuery();
     query.setPageSize(2);
     query.setPageNum(2);
@@ -578,7 +585,7 @@ class OrderIntegrationTest {
     CountDownLatch start = new CountDownLatch(1);
     try {
       List<Future<Boolean>> results = new ArrayList<>();
-      for (Supplier<Boolean> task : List.of(first, second))
+      for (Supplier<Boolean> task : List.of(first, second)) {
         results.add(
             pool.submit(
                 () -> {
@@ -592,6 +599,7 @@ class OrderIntegrationTest {
                     SecurityContextHolder.clearContext();
                   }
                 }));
+      }
       start.countDown();
       return (results.get(0).get(15, TimeUnit.SECONDS) ? 1 : 0)
           + (results.get(1).get(15, TimeUnit.SECONDS) ? 1 : 0);

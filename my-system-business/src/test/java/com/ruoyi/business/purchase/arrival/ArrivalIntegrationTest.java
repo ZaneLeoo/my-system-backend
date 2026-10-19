@@ -152,8 +152,12 @@ class ArrivalIntegrationTest {
     PageHelper.clearPage();
     SecurityContextHolder.clearContext();
     RequestContextHolder.resetRequestAttributes();
-    if (connection != null) connection.close();
-    if (context != null) context.close();
+    if (connection != null) {
+      connection.close();
+    }
+    if (context != null) {
+      context.close();
+    }
   }
 
   /** 草稿不占额度，提交占用，审核确认，作废冲减，重复和过期命令均不得累计。 */
@@ -194,14 +198,15 @@ class ArrivalIntegrationTest {
   /** 未指定预计仓库时可保存、提交和审核，接口省略该字段也遵循相同规则。 */
   @Test
   void expectedWarehouseIsOptionalThroughoutArrivalLifecycle() throws Exception {
-    var order = approved("10");
-    var request = arrival(order, "4");
+    OrderView order = approved("10");
+    SaveArrivalRequest request = arrival(order, "4");
     request.setWarehouseId(null);
-    var draft = arrivalService.create(request);
+    ArrivalView draft = arrivalService.create(request);
     assertNull(draft.getWarehouseId());
     assertEquals("", draft.getWarehouseCode());
     assertEquals("", draft.getWarehouseName());
-    var approved = action(action(draft, ArrivalAction.SUBMIT, ""), ArrivalAction.APPROVE, "");
+    ArrivalView approved =
+        action(action(draft, ArrivalAction.SUBMIT, ""), ArrivalAction.APPROVE, "");
     assertNull(approved.getWarehouseId());
     quantities(order, "0", "4");
     assertEquals(ArrivalStatus.APPROVED, approved.getStatus());
@@ -218,10 +223,10 @@ class ArrivalIntegrationTest {
   /** 清空已有预计仓库必须实际写入 NULL 并清除快照，再次选择时恢复完整校验。 */
   @Test
   void clearingExpectedWarehousePersistsAndSpecifiedWarehouseIsValidated() {
-    var draft = arrivalService.create(arrival(approved("10"), "4"));
-    var request = editArrival(draft);
+    ArrivalView draft = arrivalService.create(arrival(approved("10"), "4"));
+    SaveArrivalRequest request = editArrival(draft);
     request.setWarehouseId(null);
-    var cleared = arrivalService.update(request);
+    ArrivalView cleared = arrivalService.update(request);
     assertNull(arrivalService.detail(cleared.getArrivalId()).getWarehouseId());
     assertNull(
         jdbc.queryForObject(
@@ -230,14 +235,14 @@ class ArrivalIntegrationTest {
             cleared.getArrivalId()));
     assertEquals("", cleared.getWarehouseCode());
     assertEquals("", cleared.getWarehouseName());
-    var select = editArrival(cleared);
+    SaveArrivalRequest select = editArrival(cleared);
     select.setWarehouseId(999L);
     assertThrows(ServiceException.class, () -> arrivalService.update(select));
     select.setWarehouseId(1L);
     jdbc.update("UPDATE md_warehouse SET status='1' WHERE warehouse_id=1");
     assertThrows(ServiceException.class, () -> arrivalService.update(select));
     jdbc.update("UPDATE md_warehouse SET status='0' WHERE warehouse_id=1");
-    var restored = arrivalService.update(select);
+    ArrivalView restored = arrivalService.update(select);
     assertEquals(1L, restored.getWarehouseId());
     assertEquals("W", restored.getWarehouseCode());
     assertEquals(cleared.getVersion() + 1, restored.getVersion());
@@ -450,7 +455,9 @@ class ArrivalIntegrationTest {
   @Test
   void pagingFilteringAndResolveValidation() {
     OrderView order = approved("10");
-    for (int i = 0; i < 4; i++) arrivalService.create(arrival(order, "1"));
+    for (int i = 0; i < 4; i++) {
+      arrivalService.create(arrival(order, "1"));
+    }
     ArrivalQuery query = new ArrivalQuery();
     query.setPageSize(2);
     query.setPageNum(2);
@@ -701,7 +708,7 @@ class ArrivalIntegrationTest {
     CountDownLatch start = new CountDownLatch(1);
     try {
       List<Future<Boolean>> results = new ArrayList<>();
-      for (Supplier<Boolean> task : List.of(first, second))
+      for (Supplier<Boolean> task : List.of(first, second)) {
         results.add(
             pool.submit(
                 () -> {
@@ -715,6 +722,7 @@ class ArrivalIntegrationTest {
                     SecurityContextHolder.clearContext();
                   }
                 }));
+      }
       start.countDown();
       return (results.get(0).get(15, TimeUnit.SECONDS) ? 1 : 0)
           + (results.get(1).get(15, TimeUnit.SECONDS) ? 1 : 0);

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/monitor/server")
 public class ServerController {
+
   @PreAuthorize("@ss.hasPermi('monitor:server:list')")
   @GetMapping()
   public AjaxResult getInfo() throws Exception {

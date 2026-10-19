@@ -62,8 +62,9 @@ public class ItemServiceImpl implements ItemService {
   @Override
   @Transactional(rollbackFor = Exception.class)
   public ItemView create(SaveItemRequest request) {
-    if (request.getItemId() != null || request.getVersion() != null)
+    if (request.getItemId() != null || request.getVersion() != null) {
       throw new ServiceException("新增料品不能指定 ID 或版本号");
+    }
     lockTree();
     validateReferences(request, null);
     checkCode(request.getItemCode(), null);
@@ -83,24 +84,33 @@ public class ItemServiceImpl implements ItemService {
   @Transactional(rollbackFor = Exception.class)
   public void update(SaveItemRequest request) {
     lockTree();
-    if (request.getItemId() == null || request.getVersion() == null)
+    if (request.getItemId() == null || request.getVersion() == null) {
       throw new ServiceException("修改料品必须指定 ID 和版本号");
+    }
     // 分类锁串行化料品写入，因此这里读取的旧引用不会被其他料品写操作修改。
     Item previous = mapper.selectById(request.getItemId());
-    if (previous == null) throw new ServiceException("料品不存在或已删除");
+    if (previous == null) {
+      throw new ServiceException("料品不存在或已删除");
+    }
     validateReferences(request, previous);
     Item item = lockItem(request.getItemId(), request.getVersion());
     if (!Objects.equals(item.getBaseUnitId(), request.getBaseUnitId())
-        && references.itemPurchaseDocuments(item.getItemId(), false) > 0)
+        && references.itemPurchaseDocuments(item.getItemId(), false) > 0) {
       throw new ServiceException("存在采购单据引用，不能修改料品库存单位");
+    }
     if ((request.getStatus() == EnableStatus.DISABLED
             || !Boolean.TRUE.equals(request.getPurchaseEnabled()))
-        && references.itemPurchaseDocuments(item.getItemId(), true) > 0)
+        && references.itemPurchaseDocuments(item.getItemId(), true) > 0) {
       throw new ServiceException("存在未完成采购单据，不能停用料品或关闭采购开关");
-    if (request.getStatus() == EnableStatus.DISABLED && references.itemStock(item.getItemId()) > 0)
+    }
+    if (request.getStatus() == EnableStatus.DISABLED
+        && references.itemStock(item.getItemId()) > 0) {
       throw new ServiceException("存在库存，不能停用料品");
+    }
     checkCode(request.getItemCode(), item.getItemId());
-    if (item.getVersion() == Integer.MAX_VALUE) throw new ServiceException("料品版本已达上限");
+    if (item.getVersion() == Integer.MAX_VALUE) {
+      throw new ServiceException("料品版本已达上限");
+    }
     copy(request, item);
     item.setVersion(item.getVersion() + 1);
     try {
@@ -109,7 +119,9 @@ public class ItemServiceImpl implements ItemService {
               Wrappers.<Item>lambdaUpdate()
                   .eq(Item::getItemId, item.getItemId())
                   .eq(Item::getVersion, request.getVersion()))
-          != 1) throw stale();
+          != 1) {
+        throw stale();
+      }
     } catch (DuplicateKeyException exception) {
       throw occupied();
     }
@@ -121,9 +133,12 @@ public class ItemServiceImpl implements ItemService {
   public void delete(Long id, Integer version) {
     lockTree();
     Item item = lockItem(id, version);
-    if (references.itemPurchaseDocuments(id, false) > 0)
+    if (references.itemPurchaseDocuments(id, false) > 0) {
       throw new ServiceException("存在采购单据引用，不能删除料品");
-    if (mapper.deleteById(item) != 1) throw stale();
+    }
+    if (mapper.deleteById(item) != 1) {
+      throw stale();
+    }
   }
 
   /** 单位选项不分页，停用项保留供旧值展示与查询。 */
@@ -147,22 +162,33 @@ public class ItemServiceImpl implements ItemService {
   /** 引用替换要求启用；停用料品可原样保留停用引用，重新启用时全量校验。 */
   private void validateReferences(SaveItemRequest request, Item previous) {
     ItemCategory category = categories.selectById(request.getCategoryId());
-    if (category == null) throw new ServiceException("分类不存在或已删除");
+    if (category == null) {
+      throw new ServiceException("分类不存在或已删除");
+    }
     boolean enabled = request.getStatus() == EnableStatus.ENABLED;
     if (category.getStatus() != CategoryStatus.ENABLED
         && (previous == null
             || enabled
-            || !Objects.equals(previous.getCategoryId(), request.getCategoryId())))
+            || !Objects.equals(previous.getCategoryId(), request.getCategoryId()))) {
       throw new ServiceException("请选择启用的分类");
+    }
     Set<Long> newIds = new TreeSet<>();
-    if (request.getBaseUnitId() != null) newIds.add(request.getBaseUnitId());
-    if (request.getPurchaseUnitId() != null) newIds.add(request.getPurchaseUnitId());
-    if (request.getSalesUnitId() != null) newIds.add(request.getSalesUnitId());
+    if (request.getBaseUnitId() != null) {
+      newIds.add(request.getBaseUnitId());
+    }
+    if (request.getPurchaseUnitId() != null) {
+      newIds.add(request.getPurchaseUnitId());
+    }
+    if (request.getSalesUnitId() != null) {
+      newIds.add(request.getSalesUnitId());
+    }
     Map<Long, Unit> locked = new HashMap<>();
     for (Long id : newIds) {
       Unit unit =
           units.selectOne(Wrappers.<Unit>lambdaQuery().eq(Unit::getUnitId, id).last("FOR UPDATE"));
-      if (unit == null) throw new ServiceException("单位不存在或已删除");
+      if (unit == null) {
+        throw new ServiceException("单位不存在或已删除");
+      }
       locked.put(id, unit);
     }
     Long[] current = {
@@ -174,32 +200,43 @@ public class ItemServiceImpl implements ItemService {
             : new Long[] {
               previous.getBaseUnitId(), previous.getPurchaseUnitId(), previous.getSalesUnitId()
             };
-    for (int i = 0; i < current.length; i++)
+    for (int i = 0; i < current.length; i++) {
       if (current[i] != null
           && locked.get(current[i]).getStatus() != EnableStatus.ENABLED
-          && (previous == null || enabled || !Objects.equals(current[i], old[i])))
+          && (previous == null || enabled || !Objects.equals(current[i], old[i]))) {
         throw new ServiceException("请选择启用的单位");
+      }
+    }
   }
 
   /** 分类树锁也保护料品分类引用与分类停用、删除之间的校验。 */
   private void lockTree() {
-    if (categories.lockTree() == null) throw new ServiceException("分类初始化不完整，缺少分类树锁记录");
+    if (categories.lockTree() == null) {
+      throw new ServiceException("分类初始化不完整，缺少分类树锁记录");
+    }
   }
 
   /** 对料品当前读并拒绝旧版本。 */
   private Item lockItem(Long id, Integer version) {
-    if (id == null || id <= 0 || version == null || version < 0)
+    if (id == null || id <= 0 || version == null || version < 0) {
       throw new ServiceException("必须指定有效料品 ID 和版本号");
+    }
     Item item =
         mapper.selectOne(Wrappers.<Item>lambdaQuery().eq(Item::getItemId, id).last("FOR UPDATE"));
-    if (item == null) throw new ServiceException("料品不存在或已删除");
-    if (!version.equals(item.getVersion())) throw stale();
+    if (item == null) {
+      throw new ServiceException("料品不存在或已删除");
+    }
+    if (!version.equals(item.getVersion())) {
+      throw stale();
+    }
     return item;
   }
 
   /** 唯一校验包含已删除编码。 */
   private void checkCode(String code, Long id) {
-    if (mapper.countCode(code, id) > 0) throw occupied();
+    if (mapper.countCode(code, id) > 0) {
+      throw occupied();
+    }
   }
 
   /** 返回不泄露数据库信息的编码占用提示。 */

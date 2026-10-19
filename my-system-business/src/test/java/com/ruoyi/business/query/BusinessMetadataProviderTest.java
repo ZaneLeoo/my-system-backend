@@ -11,8 +11,8 @@ class BusinessMetadataProviderTest {
   /** 14 张表都有中文名称，系统表和内部锁表不会随业务前缀自动收录。 */
   @Test
   void includesExistingBusinessScopeAndExcludesInternalTables() {
-    var provider = new BusinessMetadataProvider();
-    var registry = new MetadataRegistry(List.of(provider));
+    BusinessMetadataProvider provider = new BusinessMetadataProvider();
+    MetadataRegistry registry = new MetadataRegistry(List.of(provider));
     assertEquals(14, registry.tables().size());
     assertTrue(
         registry

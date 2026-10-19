@@ -22,9 +22,11 @@ import com.ruoyi.framework.web.exception.BusinessExceptionHandler;
 import com.ruoyi.framework.web.exception.GlobalExceptionHandler;
 import com.ruoyi.framework.web.service.PermissionService;
 import jakarta.validation.Validation;
+import jakarta.validation.ValidatorFactory;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
+import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.*;
 import javax.sql.DataSource;
@@ -91,7 +93,7 @@ class ItemCategoryIntegrationTest {
             .replaceAll("ENGINE=InnoDB[^;]*", "");
     // H2 的 IN CHECK 表达式引用建表会话，整个用例保留该连接。
     schemaConnection = dataSource.getConnection();
-    try (var sql = schemaConnection.createStatement()) {
+    try (Statement sql = schemaConnection.createStatement()) {
       for (String statement : schema.split(";")) {
         if (!statement.isBlank()) {
           sql.execute(statement);
@@ -193,7 +195,7 @@ class ItemCategoryIntegrationTest {
                     0)));
     assertThrows(ServiceException.class, () -> service.delete(root.getCategoryId(), 0));
     assertTrue(service.tree(root.getCategoryId()).isEmpty());
-    var rows = service.list(new CategoryQuery(null, "钢材", null));
+    List<CategoryView> rows = service.list(new CategoryQuery(null, "钢材", null));
     assertEquals(2, rows.size());
     assertEquals(1, rows.stream().filter(CategoryView::isMatched).count());
     assertEquals(
@@ -330,7 +332,7 @@ class ItemCategoryIntegrationTest {
         AccessDeniedException.class,
         () -> controller.update(request(1L, 0L, "A", "修改", CategoryStatus.ENABLED, 0)));
     assertThrows(AccessDeniedException.class, () -> controller.delete(1L, 0));
-    try (var factory = Validation.buildDefaultValidatorFactory()) {
+    try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
       assertFalse(
           factory.getValidator().validate(request(null, -1L, " ", " ", null, -1)).isEmpty());
       assertFalse(

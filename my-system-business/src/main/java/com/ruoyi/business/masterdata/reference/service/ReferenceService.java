@@ -37,7 +37,9 @@ public class ReferenceService {
     query.setSortField(request.getSortField());
     query.setSortDirection(request.getSortDirection());
     query.setStatus(EnableStatus.ENABLED.getCode());
-    if (Boolean.TRUE.equals(request.getPurchaseOnly())) query.setPurchaseEnabled(true);
+    if (Boolean.TRUE.equals(request.getPurchaseOnly())) {
+      query.setPurchaseEnabled(true);
+    }
     PageResult<com.ruoyi.business.masterdata.item.vo.ItemView> result = read.list(query);
     return new PageResult<>(
         result.getRows().stream().map(ItemReference::from).toList(), result.getTotal());

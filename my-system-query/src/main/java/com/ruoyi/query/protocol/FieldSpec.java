@@ -3,6 +3,7 @@ package com.ruoyi.query.protocol;
 import com.baomidou.mybatisplus.annotation.*;
 import java.time.*;
 import java.util.*;
+import java.util.regex.Matcher;
 
 /** FieldSpec 数据约定。 */
 public class FieldSpec {
@@ -196,8 +197,10 @@ public class FieldSpec {
 
   /** 从完整物理类型读取十进制精度，避免单独存储后与数据库类型不一致。 */
   public Integer getNumericPrecision() {
-    if (columnType == null) return null;
-    var matcher =
+    if (columnType == null) {
+      return null;
+    }
+    Matcher matcher =
         java.util.regex.Pattern.compile("(?i)decimal\\(([0-9]+),[0-9]+\\)").matcher(columnType);
     return matcher.matches() ? Integer.valueOf(matcher.group(1)) : null;
   }

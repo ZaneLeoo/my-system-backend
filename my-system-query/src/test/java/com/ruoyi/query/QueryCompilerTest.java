@@ -22,7 +22,7 @@ class QueryCompilerTest {
   @BeforeEach
   void setup() throws Exception {
     connection = DriverManager.getConnection("jdbc:h2:mem:" + UUID.randomUUID() + ";MODE=MySQL");
-    try (var s = connection.createStatement()) {
+    try (Statement s = connection.createStatement()) {
       s.execute(
           "CREATE TABLE headers(id BIGINT,name VARCHAR(100),amount DECIMAL(18,2),flag BOOLEAN,business_date DATE,del_flag CHAR(1))");
       s.execute(
@@ -85,7 +85,7 @@ class QueryCompilerTest {
 
   /** 构造受控字段描述。 */
   private FieldSpec field(String key, String source, String column, String type, boolean sort) {
-    var f = new FieldSpec();
+    FieldSpec f = new FieldSpec();
     f.setFieldKey(key);
     f.setSourceKey(source);
     f.setColumnName(column);
@@ -99,7 +99,7 @@ class QueryCompilerTest {
 
   /** 构造普通条件。 */
   private QueryNode condition(String field, String op, Object value) {
-    var n = new QueryNode();
+    QueryNode n = new QueryNode();
     n.setType("condition");
     n.setField(field);
     n.setOp(op);
@@ -109,7 +109,7 @@ class QueryCompilerTest {
 
   /** 构造显式逻辑组。 */
   private QueryNode group(String logic, QueryNode... children) {
-    var n = new QueryNode();
+    QueryNode n = new QueryNode();
     n.setType("group");
     n.setLogic(logic);
     n.setChildren(List.of(children));
@@ -118,7 +118,7 @@ class QueryCompilerTest {
 
   /** 构造同一行明细条件。 */
   private QueryNode relation(String mode, QueryNode... children) {
-    var n = group("AND", children);
+    QueryNode n = group("AND", children);
     n.setType("relation");
     n.setRelation("lines");
     n.setMode(mode);
@@ -127,17 +127,21 @@ class QueryCompilerTest {
 
   /** 编译并用绑定参数执行，不把测试值拼入 SQL。 */
   private List<Long> execute(QueryNode filter) throws Exception {
-    var request = new SearchRequest();
+    SearchRequest request = new SearchRequest();
     request.setFilter(filter);
-    var compiled = compiler.compile(adapter, snapshot, request);
+    CompiledQuery compiled = compiler.compile(adapter, snapshot, request);
     String sql = compiled.getSql().replaceAll("\\{[0-9]+}", "?");
-    try (var stmt =
+    try (PreparedStatement stmt =
         connection.prepareStatement("SELECT h.id FROM headers h WHERE " + sql + " ORDER BY h.id")) {
       int index = 0;
-      for (var value : compiled.getParameters()) stmt.setObject(++index, value);
+      for (Object value : compiled.getParameters()) {
+        stmt.setObject(++index, value);
+      }
       List<Long> ids = new ArrayList<>();
-      try (var rows = stmt.executeQuery()) {
-        while (rows.next()) ids.add(rows.getLong(1));
+      try (ResultSet rows = stmt.executeQuery()) {
+        while (rows.next()) {
+          ids.add(rows.getLong(1));
+        }
       }
       return ids;
     }
@@ -191,9 +195,9 @@ class QueryCompilerTest {
   @Test
   void injectionIsBound() throws Exception {
     String value = "x' OR 1=1 --";
-    var request = new SearchRequest();
+    SearchRequest request = new SearchRequest();
     request.setFilter(condition("name", "eq", value));
-    var result = compiler.compile(adapter, snapshot, request);
+    CompiledQuery result = compiler.compile(adapter, snapshot, request);
     assertFalse(result.getSql().contains(value));
     assertEquals(List.of(), execute(request.getFilter()));
   }
@@ -216,7 +220,7 @@ class QueryCompilerTest {
   /** 区间类型和日期严格解析。 */
   @Test
   void ranges() throws Exception {
-    var n = condition("day", "between", "2026-10-18");
+    QueryNode n = condition("day", "between", "2026-10-18");
     n.setValue2("2026-10-19");
     assertEquals(List.of(1L, 2L), execute(n));
     n.setValue2("2026-02-30");
@@ -234,8 +238,9 @@ class QueryCompilerTest {
   /** 小数不接受浮点数、超精度、科学计数法和缺失值。 */
   @Test
   void decimalValidation() {
-    for (Object value : List.of(0.1, "1.001", "1e3", Map.of("sql", "x")))
+    for (Object value : List.of(0.1, "1.001", "1e3", Map.of("sql", "x"))) {
       assertThrows(ServiceException.class, () -> execute(condition("amount", "eq", value)));
+    }
     assertThrows(ServiceException.class, () -> execute(condition("amount", "eq", null)));
   }
 
@@ -274,7 +279,7 @@ class QueryCompilerTest {
   /** 拒绝明细排序与 SQL 排序片段。 */
   @Test
   void sortingWhitelist() {
-    var r = new SearchRequest();
+    SearchRequest r = new SearchRequest();
     r.setSortField("quantity");
     assertThrows(ServiceException.class, () -> compiler.compile(adapter, snapshot, r));
     r.setSortField("name");
@@ -285,7 +290,7 @@ class QueryCompilerTest {
   /** 分页有界，技术字段和非法标识不可开放。 */
   @Test
   void boundaries() {
-    var r = new SearchRequest();
+    SearchRequest r = new SearchRequest();
     r.setPageSize(101);
     assertThrows(ServiceException.class, () -> compiler.compile(adapter, snapshot, r));
     assertThrows(ServiceException.class, () -> QueryCompiler.identifier("del_flag"));

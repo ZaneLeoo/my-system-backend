@@ -36,7 +36,9 @@ public class ItemReadSupport {
         || query.getPageNum() < 1
         || query.getPageSize() == null
         || query.getPageSize() < 1
-        || query.getPageSize() > 100) throw new ServiceException("分页参数无效");
+        || query.getPageSize() > 100) {
+      throw new ServiceException("分页参数无效");
+    }
     Map<Long, ItemCategory> tree = categoryIndex();
     QueryWrapper<Item> wrapper = visibleQuery();
     if (query.getKeyword() != null) {
@@ -49,29 +51,44 @@ public class ItemReadSupport {
                   .or()
                   .like("i.specification", keyword));
     }
-    if (query.getItemCode() != null) wrapper.like("i.item_code", escape(query.getItemCode()));
-    if (query.getItemName() != null) wrapper.like("i.item_name", escape(query.getItemName()));
-    if (query.getSpecification() != null)
+    if (query.getItemCode() != null) {
+      wrapper.like("i.item_code", escape(query.getItemCode()));
+    }
+    if (query.getItemName() != null) {
+      wrapper.like("i.item_name", escape(query.getItemName()));
+    }
+    if (query.getSpecification() != null) {
       wrapper.like("i.specification", escape(query.getSpecification()));
+    }
     if (query.getCategoryId() != null) {
       Set<Long> ids = new HashSet<>();
       ids.add(query.getCategoryId());
       boolean changed;
       do {
         changed = false;
-        for (ItemCategory c : tree.values())
-          if (ids.contains(c.getParentId())) changed |= ids.add(c.getCategoryId());
+        for (ItemCategory c : tree.values()) {
+          if (ids.contains(c.getParentId())) {
+            changed |= ids.add(c.getCategoryId());
+          }
+        }
       } while (changed);
       wrapper.in("i.category_id", ids);
     }
-    if (query.getBaseUnitId() != null) wrapper.eq("i.base_unit_id", query.getBaseUnitId());
-    if (query.getPurchaseUnitId() != null)
+    if (query.getBaseUnitId() != null) {
+      wrapper.eq("i.base_unit_id", query.getBaseUnitId());
+    }
+    if (query.getPurchaseUnitId() != null) {
       wrapper.eq("i.purchase_unit_id", query.getPurchaseUnitId());
-    if (query.getSalesUnitId() != null) wrapper.eq("i.sales_unit_id", query.getSalesUnitId());
-    if (query.getStatus() != null)
+    }
+    if (query.getSalesUnitId() != null) {
+      wrapper.eq("i.sales_unit_id", query.getSalesUnitId());
+    }
+    if (query.getStatus() != null) {
       wrapper.eq("i.status", EnableStatus.fromCode(query.getStatus()).getCode());
-    if (query.getPurchaseEnabled() != null)
+    }
+    if (query.getPurchaseEnabled() != null) {
       wrapper.eq("i.purchase_enabled", query.getPurchaseEnabled());
+    }
     String column =
         switch (query.getSortField() == null ? "itemCode" : query.getSortField()) {
           case "itemCode" -> "i.item_code";
@@ -118,7 +135,9 @@ public class ItemReadSupport {
   /** 查询未删除详情，并补齐分类路径。 */
   public ItemView detail(Long id) {
     List<ItemView> found = mapper.selectViews(visibleQuery().eq("i.item_id", id));
-    if (found.isEmpty()) throw new ServiceException("料品不存在或已删除");
+    if (found.isEmpty()) {
+      throw new ServiceException("料品不存在或已删除");
+    }
     ItemView view = found.get(0);
     view.setCategoryPath(categoryPath(view.getCategoryId(), categoryIndex()));
     return view;
@@ -129,8 +148,9 @@ public class ItemReadSupport {
     if (ids == null
         || ids.isEmpty()
         || ids.size() > 100
-        || ids.stream().anyMatch(id -> id == null || id <= 0))
+        || ids.stream().anyMatch(id -> id == null || id <= 0)) {
       throw new ServiceException("每次须指定 1～100 个有效料品 ID");
+    }
     LinkedHashSet<Long> unique = new LinkedHashSet<>(ids);
     List<ItemView> rows = mapper.selectViews(visibleQuery().in("i.item_id", unique));
     Map<Long, ItemCategory> tree = categoryIndex();

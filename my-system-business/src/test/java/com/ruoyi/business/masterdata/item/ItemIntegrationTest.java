@@ -10,6 +10,7 @@ import com.ruoyi.business.masterdata.category.domain.CategoryStatus;
 import com.ruoyi.business.masterdata.category.dto.SaveCategoryRequest;
 import com.ruoyi.business.masterdata.category.service.ItemCategoryService;
 import com.ruoyi.business.masterdata.category.service.impl.ItemCategoryServiceImpl;
+import com.ruoyi.business.masterdata.category.vo.CategoryView;
 import com.ruoyi.business.masterdata.item.controller.ItemController;
 import com.ruoyi.business.masterdata.item.dto.*;
 import com.ruoyi.business.masterdata.item.service.ItemService;
@@ -21,8 +22,10 @@ import com.ruoyi.business.masterdata.reference.service.ReferenceService;
 import com.ruoyi.business.masterdata.unit.dto.SaveUnitRequest;
 import com.ruoyi.business.masterdata.unit.service.UnitService;
 import com.ruoyi.business.masterdata.unit.service.impl.UnitServiceImpl;
+import com.ruoyi.business.masterdata.unit.vo.UnitView;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
+import com.ruoyi.common.core.page.PageResult;
 import com.ruoyi.common.enums.EnableStatus;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.framework.config.JacksonConfig;
@@ -34,6 +37,7 @@ import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
+import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
@@ -101,15 +105,21 @@ class ItemIntegrationTest {
     context.refresh();
     jdbc = new JdbcTemplate(source);
     Path migration = Path.of("../sql/migrations/20261015_01_unit.sql");
-    if (!Files.exists(migration)) migration = Path.of("sql/migrations/20261015_01_unit.sql");
+    if (!Files.exists(migration)) {
+      migration = Path.of("sql/migrations/20261015_01_unit.sql");
+    }
     String schema =
         Files.readString(migration)
             .split("START TRANSACTION;")[0]
             .replaceAll("(?m)^SET NAMES.*;", "")
             .replaceAll("ENGINE=InnoDB[^;]*", "");
     schemaConnection = source.getConnection();
-    try (var sql = schemaConnection.createStatement()) {
-      for (String statement : schema.split(";")) if (!statement.isBlank()) sql.execute(statement);
+    try (Statement sql = schemaConnection.createStatement()) {
+      for (String statement : schema.split(";")) {
+        if (!statement.isBlank()) {
+          sql.execute(statement);
+        }
+      }
     }
     com.ruoyi.business.masterdata.common.MasterDataTestSchema.create(schemaConnection);
     service = context.getBean(ItemService.class);
@@ -136,8 +146,12 @@ class ItemIntegrationTest {
     PageHelper.clearPage();
     SecurityContextHolder.clearContext();
     RequestContextHolder.resetRequestAttributes();
-    if (schemaConnection != null) schemaConnection.close();
-    if (context != null) context.close();
+    if (schemaConnection != null) {
+      schemaConnection.close();
+    }
+    if (context != null) {
+      context.close();
+    }
   }
 
   /** 可空字段可清除，三个单位互相独立，审计及旧版本保护有效。 */
@@ -215,14 +229,16 @@ class ItemIntegrationTest {
     Long child = categories.create(category("CHILD", categoryId)).getCategoryId();
     for (String code : List.of("D", "A", "C", "B", "E")) {
       SaveItemRequest r = request(code);
-      if (!code.equals("A")) r.setCategoryId(child);
+      if (!code.equals("A")) {
+        r.setCategoryId(child);
+      }
       service.create(r);
     }
     ItemQuery query = new ItemQuery();
     query.setCategoryId(categoryId);
     query.setPageSize(2);
     query.setPageNum(2);
-    var result = service.list(query);
+    PageResult<ItemView> result = service.list(query);
     assertEquals(5, result.getTotal());
     assertEquals(List.of("C", "D"), result.getRows().stream().map(ItemView::getItemCode).toList());
     assertEquals("ROOT / CHILD", result.getRows().get(0).getCategoryPath());
@@ -299,12 +315,13 @@ class ItemIntegrationTest {
                 .value(
                     org.hamcrest.Matchers.matchesPattern(
                         "\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}")));
-    for (String tax : List.of("100.01", "-1", "1.001"))
+    for (String tax : List.of("100.01", "-1", "1.001")) {
       mvc.perform(
               post(BASE)
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(payload.replace("\"defaultTaxRate\":null", "\"defaultTaxRate\":" + tax)))
           .andExpect(jsonPath("$.code").value(500));
+    }
     mvc.perform(get(BASE + "/list").param("pageSize", "101"))
         .andExpect(jsonPath("$.code").value(500));
     mvc.perform(get(BASE + "/list").param("sortField", "bad"))
@@ -364,8 +381,11 @@ class ItemIntegrationTest {
                 return true;
               },
               () -> {
-                if (operation % 2 == 0) units.update(disabledUnit(id));
-                else units.delete(id, 0);
+                if (operation % 2 == 0) {
+                  units.update(disabledUnit(id));
+                } else {
+                  units.delete(id, 0);
+                }
                 return true;
               }));
       assertEquals(
@@ -391,7 +411,9 @@ class ItemIntegrationTest {
                   SaveCategoryRequest c = categoryEdit(id);
                   c.setStatus(CategoryStatus.DISABLED);
                   categories.update(c);
-                } else categories.delete(id, 0);
+                } else {
+                  categories.delete(id, 0);
+                }
                 return true;
               }));
       assertEquals(
@@ -501,9 +523,10 @@ class ItemIntegrationTest {
             get("/masterdata/reference/items/resolve")
                 .param("ids", b.getItemId() + "," + a.getItemId()))
         .andExpect(jsonPath("$.data[0].itemId").value(b.getItemId()));
-    for (String invalid : List.of("0", "-1", "abc"))
+    for (String invalid : List.of("0", "-1", "abc")) {
       mvc.perform(get("/masterdata/reference/items/resolve").param("ids", invalid))
           .andExpect(jsonPath("$.code").value(500));
+    }
     mvc.perform(
             get("/masterdata/reference/items/resolve")
                 .param("ids", String.join(",", Collections.nCopies(101, "1"))))
@@ -554,7 +577,7 @@ class ItemIntegrationTest {
 
   /** 取得单位最新版本。 */
   private SaveUnitRequest unitEdit(Long id) {
-    var view = units.detail(id);
+    UnitView view = units.detail(id);
     SaveUnitRequest r = unit(view.getUnitCode());
     r.setUnitId(id);
     r.setVersion(view.getVersion());
@@ -575,7 +598,7 @@ class ItemIntegrationTest {
 
   /** 取得分类最新版本。 */
   private SaveCategoryRequest categoryEdit(Long id) {
-    var view = categories.detail(id);
+    CategoryView view = categories.detail(id);
     return new SaveCategoryRequest(
         id,
         view.getParentId(),

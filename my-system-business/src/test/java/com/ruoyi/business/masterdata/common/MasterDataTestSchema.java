@@ -3,6 +3,7 @@ package com.ruoyi.business.masterdata.common;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
+import java.sql.Statement;
 
 /** 从生产脚本创建关联测试基础表，不执行菜单和演示数据。 */
 public final class MasterDataTestSchema {
@@ -23,7 +24,9 @@ public final class MasterDataTestSchema {
           "20261018_02_purchase_receipt_inventory.sql"
         }) {
       Path path = Path.of("../sql/migrations", file);
-      if (!Files.exists(path)) path = Path.of("sql/migrations", file);
+      if (!Files.exists(path)) {
+        path = Path.of("sql/migrations", file);
+      }
       String schema =
           Files.readString(path)
               .split("START TRANSACTION;")[0]
@@ -34,11 +37,15 @@ public final class MasterDataTestSchema {
                   "GENERATED ALWAYS AS (COALESCE(location_id,0))")
               .replaceAll("(?m)^SET NAMES.*;", "")
               .replaceAll("ENGINE=InnoDB[^;]*", "");
-      try (var statement = connection.createStatement()) {
-        for (String sql : schema.split(";")) if (!sql.isBlank()) statement.execute(sql);
+      try (Statement statement = connection.createStatement()) {
+        for (String sql : schema.split(";")) {
+          if (!sql.isBlank()) {
+            statement.execute(sql);
+          }
+        }
       }
     }
-    try (var statement = connection.createStatement()) {
+    try (Statement statement = connection.createStatement()) {
       statement.execute("ALTER TABLE purchase_arrival ALTER COLUMN warehouse_id DROP NOT NULL");
       statement.execute(
           "ALTER TABLE purchase_receipt_line ADD COLUMN warehouse_id BIGINT NOT NULL");

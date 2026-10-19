@@ -9,6 +9,7 @@ import com.ruoyi.query.metadata.*;
 import com.ruoyi.query.protocol.*;
 import com.ruoyi.query.spi.*;
 import java.util.*;
+import java.util.Map.Entry;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,17 +51,20 @@ public class DefinitionService {
 
   /** 按当前目录页限制关联结果，旧调用未传 ID 时保留完整目录行为。 */
   public List<Map<String, Object>> tableLinks(List<Long> ids) {
-    if (ids != null && (ids.size() > 100 || ids.stream().anyMatch(id -> id == null || id <= 0)))
+    if (ids != null && (ids.size() > 100 || ids.stream().anyMatch(id -> id == null || id <= 0))) {
       throw new ServiceException("目录 ID 每次最多 100 个且必须为正整数", 400);
+    }
     Map<String, Long> tableIds = new HashMap<>();
-    var tables = ids == null ? metadata.list() : metadata.findByIds(ids);
+    List<MetadataTable> tables = ids == null ? metadata.list() : metadata.findByIds(ids);
     tables.forEach(table -> tableIds.put(table.getTableName(), table.getTableId()));
     List<Map<String, Object>> links = new ArrayList<>();
-    for (var definition : list()) {
-      var adapter = registry.require(definition.getAdapterKey());
-      for (var source : adapter.sources().entrySet()) {
+    for (QueryDefinition definition : list()) {
+      QueryAdapter adapter = registry.require(definition.getAdapterKey());
+      for (Entry<String, QuerySource> source : adapter.sources().entrySet()) {
         Long tableId = tableIds.get(source.getValue().getTable());
-        if (tableId == null) continue;
+        if (tableId == null) {
+          continue;
+        }
         links.add(
             Map.of(
                 "tableId", tableId,
@@ -74,15 +78,20 @@ public class DefinitionService {
 
   /** 按 ID 返回查询对象。 */
   public QueryDefinition require(Long id) {
-    var d = definitions.selectById(id);
-    if (d == null) throw new ServiceException("查询配置不存在");
+    QueryDefinition d = definitions.selectById(id);
+    if (d == null) {
+      throw new ServiceException("查询配置不存在");
+    }
     return d;
   }
 
   /** 按稳定编码返回查询对象。 */
   public QueryDefinition byKey(String key) {
-    var d = definitions.selectOne(new QueryWrapper<QueryDefinition>().eq("query_key", key));
-    if (d == null) throw new ServiceException("查询配置未初始化");
+    QueryDefinition d =
+        definitions.selectOne(new QueryWrapper<QueryDefinition>().eq("query_key", key));
+    if (d == null) {
+      throw new ServiceException("查询配置未初始化");
+    }
     return d;
   }
 
@@ -97,16 +106,18 @@ public class DefinitionService {
 
   /** 提供当前对象的来源分组和可选字段，禁止任意选表。 */
   public List<Map<String, Object>> sources(Long id) {
-    var d = require(id);
-    var adapter = registry.require(d.getAdapterKey());
+    QueryDefinition d = require(id);
+    QueryAdapter adapter = registry.require(d.getAdapterKey());
     List<Map<String, Object>> result = new ArrayList<>();
-    for (var source : adapter.sources().entrySet()) {
-      var table =
+    for (Entry<String, QuerySource> source : adapter.sources().entrySet()) {
+      Optional<MetadataTable> table =
           metadata.list().stream()
               .filter(t -> t.getTableName().equals(source.getValue().getTable()))
               .findFirst();
-      if (table.isEmpty()) continue;
-      var available =
+      if (table.isEmpty()) {
+        continue;
+      }
+      List<MetadataColumn> available =
           metadata.columns(table.get().getTableId()).stream()
               .filter(
                   c ->
@@ -148,28 +159,34 @@ public class DefinitionService {
   /** 在行锁内保存草稿，拒绝移动或复用已存在的字段标识。 */
   @Transactional(rollbackFor = Exception.class)
   public QueryDefinition save(Long id, SaveDefinitionRequest request) {
-    var d = lock(id, request.getVersion());
+    QueryDefinition d = lock(id, request.getVersion());
     if (request.getDisplayName() == null
         || request.getDisplayName().isBlank()
         || request.getDisplayName().length() > 100
         || request.getFields() == null
-        || request.getFields().size() > 100) throw new ServiceException("查询名称或字段数量无效", 400);
+        || request.getFields().size() > 100) {
+      throw new ServiceException("查询名称或字段数量无效", 400);
+    }
     Map<String, QueryField> existing = new HashMap<>();
     fields(id).forEach(f -> existing.put(f.getFieldKey(), f));
     Set<String> keys = new HashSet<>();
-    for (var input : request.getFields()) {
+    for (SaveFieldRequest input : request.getFields()) {
       if (input.getFieldKey() == null
           || !input.getFieldKey().matches("[a-zA-Z][a-zA-Z0-9]{0,63}")
-          || !keys.add(input.getFieldKey())) throw new ServiceException("字段标识无效或重复", 400);
-      var previous = existing.remove(input.getFieldKey());
+          || !keys.add(input.getFieldKey())) {
+        throw new ServiceException("字段标识无效或重复", 400);
+      }
+      QueryField previous = existing.remove(input.getFieldKey());
       if (input.getFieldId() != null
-          && (previous == null || !input.getFieldId().equals(previous.getFieldId())))
+          && (previous == null || !input.getFieldId().equals(previous.getFieldId()))) {
         throw new ServiceException("字段标识不可更改", 400);
+      }
       if (previous != null
           && (!Objects.equals(previous.getSourceKey(), input.getSourceKey())
-              || !Objects.equals(previous.getColumnId(), input.getColumnId())))
+              || !Objects.equals(previous.getColumnId(), input.getColumnId()))) {
         throw new ServiceException("已有字段不可更换数据来源，请停用后新增字段标识", 400);
-      var f = new QueryField();
+      }
+      QueryField f = new QueryField();
       f.setDefinitionId(id);
       f.setFieldKey(input.getFieldKey());
       f.setSourceKey(input.getSourceKey());
@@ -183,13 +200,14 @@ public class DefinitionService {
       f.setDisplayOrder(input.getDisplayOrder() == null ? 0 : input.getDisplayOrder());
       f.setSortable(Boolean.TRUE.equals(input.getSortable()));
       f.setEnabled(Boolean.TRUE.equals(input.getEnabled()));
-      if (previous == null) fields.insert(f);
-      else {
+      if (previous == null) {
+        fields.insert(f);
+      } else {
         f.setFieldId(previous.getFieldId());
         fields.updateById(f);
       }
     }
-    for (var old : existing.values()) {
+    for (QueryField old : existing.values()) {
       old.setEnabled(false);
       fields.updateById(old);
     }
@@ -202,9 +220,9 @@ public class DefinitionService {
 
   /** 将当前草稿解析为严格受控的可执行定义，预览和发布共用。 */
   public QuerySnapshot draft(Long id) {
-    var d = require(id);
-    var adapter = registry.require(d.getAdapterKey());
-    var snapshot = new QuerySnapshot();
+    QueryDefinition d = require(id);
+    QueryAdapter adapter = registry.require(d.getAdapterKey());
+    QuerySnapshot snapshot = new QuerySnapshot();
     snapshot.setEnabled(d.getEnabled());
     snapshot.setQueryKey(d.getQueryKey());
     snapshot.setDisplayName(d.getDisplayName());
@@ -213,28 +231,32 @@ public class DefinitionService {
         .sources()
         .forEach(
             (key, s) -> {
-              if (!"main".equals(key)) snapshot.getRelations().put(key, s.getLabel());
+              if (!"main".equals(key)) {
+                snapshot.getRelations().put(key, s.getLabel());
+              }
             });
     Map<Long, MetadataColumn> allColumns = new HashMap<>();
     columns.selectList(null).forEach(c -> allColumns.put(c.getColumnId(), c));
     Map<Long, MetadataTable> allTables = new HashMap<>();
     metadata.list().forEach(t -> allTables.put(t.getTableId(), t));
-    for (var f : fields(id))
+    for (QueryField f : fields(id)) {
       if (Boolean.TRUE.equals(f.getEnabled())) {
-        var source = adapter.sources().get(f.getSourceKey());
-        var col = allColumns.get(f.getColumnId());
-        var table = col == null ? null : allTables.get(col.getTableId());
+        QuerySource source = adapter.sources().get(f.getSourceKey());
+        MetadataColumn col = allColumns.get(f.getColumnId());
+        MetadataTable table = col == null ? null : allTables.get(col.getTableId());
         if (source == null
             || col == null
             || table == null
             || !Boolean.TRUE.equals(col.getAvailable())
             || !Boolean.TRUE.equals(table.getAvailable())
-            || !source.getTable().equals(table.getTableName()))
+            || !source.getTable().equals(table.getTableName())) {
           throw new ServiceException("字段来源失效：" + f.getFieldKey(), 400);
+        }
         QueryCompiler.identifier(col.getColumnName());
-        if (f.getLabel() == null || f.getLabel().isBlank() || f.getLabel().length() > 100)
+        if (f.getLabel() == null || f.getLabel().isBlank() || f.getLabel().length() > 100) {
           throw new ServiceException("字段显示名称无效", 400);
-        var spec = new FieldSpec();
+        }
+        FieldSpec spec = new FieldSpec();
         spec.setFieldKey(f.getFieldKey());
         spec.setSourceKey(f.getSourceKey());
         spec.setColumnId(col.getColumnId());
@@ -259,14 +281,17 @@ public class DefinitionService {
         if (spec.getOperators() == null
             || spec.getOperators().isEmpty()
             || !QueryCompiler.operators(spec).containsAll(spec.getOperators())
-            || !spec.getOperators().contains(spec.getDefaultOperator()))
+            || !spec.getOperators().contains(spec.getDefaultOperator())) {
           throw new ServiceException("字段运算符与类型不匹配：" + f.getLabel(), 400);
+        }
         String expectedProvider = provider(adapter, f.getSourceKey(), col);
-        if (!expectedProvider.equals(Objects.toString(spec.getOptionProvider(), "")))
+        if (!expectedProvider.equals(Objects.toString(spec.getOptionProvider(), ""))) {
           throw new ServiceException("字段选项来源与业务语义不匹配：" + f.getLabel(), 400);
+        }
         boolean ref = spec.getOptionProvider() != null && !spec.getOptionProvider().isBlank();
-        if (ref && !adapter.optionProviders().contains(spec.getOptionProvider()))
+        if (ref && !adapter.optionProviders().contains(spec.getOptionProvider())) {
           throw new ServiceException("选项来源未登记", 400);
+        }
         Set<String> controls =
             switch (spec.getDataType()) {
               case "STRING" -> Set.of("TEXT", "SELECT");
@@ -279,43 +304,49 @@ public class DefinitionService {
             };
         if (!controls.contains(spec.getComponent())
             || (Set.of("SELECT", "REFERENCE").contains(spec.getComponent()) && !ref)
-            || (ref && !Set.of("SELECT", "REFERENCE").contains(spec.getComponent())))
+            || (ref && !Set.of("SELECT", "REFERENCE").contains(spec.getComponent()))) {
           throw new ServiceException("控件与字段类型不匹配：" + f.getLabel(), 400);
-        if (Boolean.TRUE.equals(spec.getSortable()) && !"main".equals(spec.getSourceKey()))
+        }
+        if (Boolean.TRUE.equals(spec.getSortable()) && !"main".equals(spec.getSourceKey())) {
           throw new ServiceException("明细字段不支持排序", 400);
-        if (Boolean.TRUE.equals(spec.getCommonVisible()) && !"main".equals(spec.getSourceKey()))
+        }
+        if (Boolean.TRUE.equals(spec.getCommonVisible()) && !"main".equals(spec.getSourceKey())) {
           throw new ServiceException("明细条件请在高级查询关联组中配置", 400);
+        }
         snapshot.getFields().add(spec);
       }
+    }
     if (snapshot.getFields().stream()
         .noneMatch(
             f ->
                 f.getFieldKey().equals(adapter.defaultSort())
-                    && Boolean.TRUE.equals(f.getSortable())))
+                    && Boolean.TRUE.equals(f.getSortable()))) {
       throw new ServiceException("默认排序字段必须启用并允许排序", 400);
+    }
     return snapshot;
   }
 
   /** 持锁检查预览版本后生成不可变快照。 */
   @Transactional(rollbackFor = Exception.class)
   public QueryRelease publish(Long id, Integer version) {
-    var d = lock(id, version);
-    var snapshot = draft(id);
-    for (var source : registry.require(d.getAdapterKey()).sources().values()) {
-      var table =
+    QueryDefinition d = lock(id, version);
+    QuerySnapshot snapshot = draft(id);
+    for (QuerySource source : registry.require(d.getAdapterKey()).sources().values()) {
+      MetadataTable table =
           metadata.list().stream()
               .filter(t -> source.getTable().equals(t.getTableName()))
               .findFirst()
               .orElseThrow();
-      var diff = metadata.preview(table.getTableId());
+      Map<String, Object> diff = metadata.preview(table.getTableId());
       if (!((List<?>) diff.get("added")).isEmpty()
           || !((List<?>) diff.get("changed")).isEmpty()
-          || !((List<?>) diff.get("removed")).isEmpty())
+          || !((List<?>) diff.get("removed")).isEmpty()) {
         throw new ServiceException("数据库结构已变化，请先同步数据目录", 409);
+      }
     }
     int next = Math.incrementExact(d.getPublishedRevision());
     snapshot.setConfigVersion(next);
-    var release = new QueryRelease();
+    QueryRelease release = new QueryRelease();
     release.setDefinitionId(id);
     release.setRevision(next);
     release.setConfigSnapshot(JSON.toJSONString(snapshot));
@@ -340,11 +371,12 @@ public class DefinitionService {
 
   /** 在事务内锁定整份配置并比较编辑版本。 */
   private QueryDefinition lock(Long id, Integer version) {
-    var d =
+    QueryDefinition d =
         definitions.selectOne(
             new QueryWrapper<QueryDefinition>().eq("definition_id", id).last("FOR UPDATE"));
-    if (d == null || !Objects.equals(d.getDraftVersion(), version))
+    if (d == null || !Objects.equals(d.getDraftVersion(), version)) {
       throw new ServiceException("配置已被修改，请刷新后重试", 409);
+    }
     return d;
   }
 

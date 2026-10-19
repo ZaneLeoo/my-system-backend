@@ -40,8 +40,10 @@ public class MetadataService {
 
   /** 列出代码允许导入的实际业务表。 */
   public List<Map<String, Object>> candidates() {
-    var result = physicalTables(registry.tables());
-    if (result.isEmpty()) return result;
+    List<Map<String, Object>> result = physicalTables(registry.tables());
+    if (result.isEmpty()) {
+      return result;
+    }
     String schema = jdbc.queryForObject("SELECT DATABASE()", String.class);
     Set<String> imported = new HashSet<>();
     tables
@@ -50,7 +52,7 @@ public class MetadataService {
                 .eq("schema_name", schema)
                 .in("table_name", registry.tables()))
         .forEach(table -> imported.add(table.getTableName()));
-    for (var table : result) {
+    for (Map<String, Object> table : result) {
       String name = Objects.toString(table.get("tableName"));
       table.put("displayName", registry.displayName(name));
       table.put("imported", imported.contains(name));
@@ -72,7 +74,7 @@ public class MetadataService {
         || query.getPageSize() > 100) {
       throw new ServiceException("分页参数无效，每页允许 1～100 条", 400);
     }
-    var wrapper = new QueryWrapper<MetadataTable>();
+    QueryWrapper<MetadataTable> wrapper = new QueryWrapper<MetadataTable>();
     if (query.getKeyword() != null) {
       String pattern =
           "%" + query.getKeyword().replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
@@ -101,14 +103,18 @@ public class MetadataService {
 
   /** 只读取当前页面所需目录，避免分页后仍加载完整目录关联。 */
   public List<MetadataTable> findByIds(List<Long> ids) {
-    if (ids.isEmpty()) return List.of();
+    if (ids.isEmpty()) {
+      return List.of();
+    }
     return tables.selectList(new QueryWrapper<MetadataTable>().in("table_id", ids));
   }
 
   /** 查找有效目录。 */
   public MetadataTable require(Long id) {
-    var t = tables.selectById(id);
-    if (t == null) throw new ServiceException("数据表目录不存在");
+    MetadataTable t = tables.selectById(id);
+    if (t == null) {
+      throw new ServiceException("数据表目录不存在");
+    }
     return t;
   }
 
@@ -122,17 +128,21 @@ public class MetadataService {
   /** 在同一事务导入指定表，重复导入不覆盖人工配置。 */
   @Transactional(rollbackFor = Exception.class)
   public MetadataTable importTable(String name) {
-    if (!registry.tables().contains(name)) throw new ServiceException("该表未登记为可导入业务表", 400);
+    if (!registry.tables().contains(name)) {
+      throw new ServiceException("该表未登记为可导入业务表", 400);
+    }
     String schema = jdbc.queryForObject("SELECT DATABASE()", String.class);
-    var found =
+    MetadataTable found =
         tables.selectOne(
             new QueryWrapper<MetadataTable>().eq("schema_name", schema).eq("table_name", name));
-    if (found != null) return found;
-    var available =
+    if (found != null) {
+      return found;
+    }
+    Map<String, Object> available =
         physicalTables(Set.of(name)).stream()
             .findFirst()
             .orElseThrow(() -> new ServiceException("业务表不存在"));
-    var t = new MetadataTable();
+    MetadataTable t = new MetadataTable();
     t.setSchemaName(schema);
     t.setTableName(name);
     t.setTableComment(Objects.toString(available.get("tableComment"), ""));
@@ -141,10 +151,10 @@ public class MetadataService {
     t.setVersion(0);
     t.setSynchronizedTime(
         LocalDateTime.now(com.ruoyi.common.constant.DateTimeConstants.BUSINESS_ZONE));
-    var physical = physical(name);
+    List<MetadataColumn> physical = physical(name);
     t.setStructureSignature(signature(physical));
     tables.insert(t);
-    for (var c : physical) {
+    for (MetadataColumn c : physical) {
       c.setTableId(t.getTableId());
       columns.insert(c);
     }
@@ -153,20 +163,23 @@ public class MetadataService {
 
   /** 生成完整结构差异及确认签名，不改变目录。 */
   public Map<String, Object> preview(Long id) {
-    var t = require(id);
-    var actual = physical(t.getTableName());
-    var old = columns(id);
+    MetadataTable t = require(id);
+    List<MetadataColumn> actual = physical(t.getTableName());
+    List<MetadataColumn> old = columns(id);
     Map<String, MetadataColumn> indexed = new HashMap<>();
     old.forEach(c -> indexed.put(c.getColumnName(), c));
     List<MetadataColumn> added = new ArrayList<>(), changed = new ArrayList<>();
     Set<String> names = new HashSet<>();
-    for (var c : actual) {
+    for (MetadataColumn c : actual) {
       names.add(c.getColumnName());
-      var previous = indexed.get(c.getColumnName());
-      if (previous == null) added.add(c);
-      else if (!same(previous, c) || !Boolean.TRUE.equals(previous.getAvailable())) changed.add(c);
+      MetadataColumn previous = indexed.get(c.getColumnName());
+      if (previous == null) {
+        added.add(c);
+      } else if (!same(previous, c) || !Boolean.TRUE.equals(previous.getAvailable())) {
+        changed.add(c);
+      }
     }
-    var removed =
+    List<MetadataColumn> removed =
         old.stream()
             .filter(
                 c -> Boolean.TRUE.equals(c.getAvailable()) && !names.contains(c.getColumnName()))
@@ -193,26 +206,30 @@ public class MetadataService {
   /** 持锁复核预览签名，保留名称和字段 ID，删除项仅标记失效。 */
   @Transactional(rollbackFor = Exception.class)
   public MetadataTable synchronize(Long id, Integer version, String expectedSignature) {
-    var t =
+    MetadataTable t =
         tables.selectOne(new QueryWrapper<MetadataTable>().eq("table_id", id).last("FOR UPDATE"));
-    if (t == null || !Objects.equals(t.getVersion(), version))
+    if (t == null || !Objects.equals(t.getVersion(), version)) {
       throw new ServiceException("目录已更新，请重新预览", 409);
-    var physical = physical(t.getTableName());
+    }
+    List<MetadataColumn> physical = physical(t.getTableName());
     String signature = signature(physical);
-    if (!signature.equals(expectedSignature)) throw new ServiceException("数据库结构再次变化，请重新预览", 409);
+    if (!signature.equals(expectedSignature)) {
+      throw new ServiceException("数据库结构再次变化，请重新预览", 409);
+    }
     Map<String, MetadataColumn> indexed = new HashMap<>();
     columns(id).forEach(c -> indexed.put(c.getColumnName(), c));
-    for (var c : physical) {
-      var old = indexed.remove(c.getColumnName());
+    for (MetadataColumn c : physical) {
+      MetadataColumn old = indexed.remove(c.getColumnName());
       c.setTableId(id);
-      if (old == null) columns.insert(c);
-      else {
+      if (old == null) {
+        columns.insert(c);
+      } else {
         c.setColumnId(old.getColumnId());
         c.setDisplayName(old.getDisplayName());
         columns.updateById(c);
       }
     }
-    for (var c : indexed.values()) {
+    for (MetadataColumn c : indexed.values()) {
       c.setAvailable(false);
       columns.updateById(c);
     }
@@ -228,16 +245,21 @@ public class MetadataService {
   /** 使用受控字段更新人工名称，不修改数据库注释。 */
   @Transactional(rollbackFor = Exception.class)
   public void rename(Long id, Integer version, String label, Long columnId) {
-    if (label == null || label.isBlank() || label.strip().length() > 100)
+    if (label == null || label.isBlank() || label.strip().length() > 100) {
       throw new ServiceException("显示名称须为 1～100 个字符", 400);
-    var t =
+    }
+    MetadataTable t =
         tables.selectOne(new QueryWrapper<MetadataTable>().eq("table_id", id).last("FOR UPDATE"));
-    if (t == null || !Objects.equals(t.getVersion(), version))
+    if (t == null || !Objects.equals(t.getVersion(), version)) {
       throw new ServiceException("目录版本已变化", 409);
-    if (columnId == null) t.setDisplayName(label.strip());
-    else {
-      var c = columns.selectById(columnId);
-      if (c == null || !id.equals(c.getTableId())) throw new ServiceException("字段不属于当前数据表", 400);
+    }
+    if (columnId == null) {
+      t.setDisplayName(label.strip());
+    } else {
+      MetadataColumn c = columns.selectById(columnId);
+      if (c == null || !id.equals(c.getTableId())) {
+        throw new ServiceException("字段不属于当前数据表", 400);
+      }
       c.setDisplayName(label.strip());
       columns.updateById(c);
     }
@@ -247,7 +269,9 @@ public class MetadataService {
 
   /** 批量读取已登记且实际存在的业务表，表名均作为绑定参数。 */
   private List<Map<String, Object>> physicalTables(Set<String> names) {
-    if (names.isEmpty()) return List.of();
+    if (names.isEmpty()) {
+      return List.of();
+    }
     return jdbc.queryForList(
         "SELECT TABLE_NAME AS tableName,TABLE_COMMENT AS tableComment FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE' AND TABLE_NAME IN ("
             + String.join(",", Collections.nCopies(names.size(), "?"))
@@ -257,11 +281,13 @@ public class MetadataService {
 
   /** 一次读取字段结构；表名也是绑定值。 */
   private List<MetadataColumn> physical(String name) {
-    if (!registry.tables().contains(name)) throw new ServiceException("数据来源未登记", 400);
+    if (!registry.tables().contains(name)) {
+      throw new ServiceException("数据来源未登记", 400);
+    }
     return jdbc.query(
         "SELECT COLUMN_NAME,COLUMN_COMMENT,DATA_TYPE,COLUMN_TYPE,CHARACTER_MAXIMUM_LENGTH,NUMERIC_SCALE,IS_NULLABLE,COLUMN_KEY,ORDINAL_POSITION FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? ORDER BY ORDINAL_POSITION",
         (rs, n) -> {
-          var c = new MetadataColumn();
+          MetadataColumn c = new MetadataColumn();
           c.setColumnName(rs.getString(1));
           c.setColumnComment(rs.getString(2));
           c.setDisplayName(
@@ -307,7 +333,7 @@ public class MetadataService {
   public static String signature(List<MetadataColumn> values) {
     try {
       StringBuilder text = new StringBuilder();
-      for (var c : values)
+      for (MetadataColumn c : values) {
         text.append(c.getColumnName())
             .append('|')
             .append(c.getColumnType())
@@ -318,6 +344,7 @@ public class MetadataService {
             .append('|')
             .append(c.getOrdinalPosition())
             .append(';');
+      }
       return HexFormat.of()
           .formatHex(
               MessageDigest.getInstance("SHA-256")
