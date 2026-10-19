@@ -3,6 +3,7 @@ package com.ruoyi.query.web;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.domain.R;
 import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.query.definition.DefinitionService;
 import com.ruoyi.query.metadata.*;
 import java.util.*;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,10 +14,12 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/query/metadata")
 public class MetadataController {
   private final MetadataService service;
+  private final DefinitionService definitions;
 
   /** 注入目录服务。 */
-  public MetadataController(MetadataService service) {
+  public MetadataController(MetadataService service, DefinitionService definitions) {
     this.service = service;
+    this.definitions = definitions;
   }
 
   /** 查看已导入目录。 */
@@ -24,6 +27,13 @@ public class MetadataController {
   @PreAuthorize("@ss.hasPermi('query:metadata:list')")
   public R<?> list() {
     return R.ok(service.list());
+  }
+
+  /** 返回目录表对应的已登记查询配置，仅供同时具备两项管理权限的用户查看。 */
+  @GetMapping("/definition-links")
+  @PreAuthorize("@ss.hasPermi('query:metadata:list') and @ss.hasPermi('query:definition:list')")
+  public R<?> definitionLinks() {
+    return R.ok(definitions.tableLinks());
   }
 
   /** 查看可导入实际表。 */

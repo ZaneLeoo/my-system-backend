@@ -27,6 +27,43 @@ class QueryPublicationTest {
   private FieldSpec field;
   private MetadataColumn column;
 
+  /** 目录入口只关联后端登记的主表和明细来源，不靠前端猜测表名。 */
+  @Test
+  void tableLinksFollowRegisteredSources() {
+    var definitions = mock(QueryDefinitionMapper.class);
+    var metadata = mock(MetadataService.class);
+    var definition = new QueryDefinition();
+    definition.setDefinitionId(7L);
+    definition.setAdapterKey("test");
+    definition.setDisplayName("采购订单");
+    when(definitions.selectList(any())).thenReturn(List.of(definition));
+    var main = new MetadataTable();
+    main.setTableId(11L);
+    main.setTableName("business");
+    var lines = new MetadataTable();
+    lines.setTableId(12L);
+    lines.setTableName("business_line");
+    when(metadata.list()).thenReturn(List.of(main, lines));
+    when(adapter.sources())
+        .thenReturn(
+            Map.of(
+                "main", new QuerySource("business", "b", "主表", null),
+                "lines", new QuerySource("business_line", "l", "明细", "l.parent_id=b.id")));
+    var service =
+        new DefinitionService(
+            definitions,
+            mock(QueryFieldMapper.class),
+            mock(QueryReleaseMapper.class),
+            mock(MetadataColumnMapper.class),
+            metadata,
+            registry);
+    var links = service.tableLinks();
+    assertEquals(2, links.size());
+    assertTrue(links.stream().anyMatch(link -> link.get("tableId").equals(11L)));
+    assertTrue(links.stream().anyMatch(link -> link.get("tableId").equals(12L)));
+    assertTrue(links.stream().allMatch(link -> link.get("definitionId").equals(7L)));
+  }
+
   /** 准备固定后端能力和单个已发布字段。 */
   @BeforeEach
   void setup() {

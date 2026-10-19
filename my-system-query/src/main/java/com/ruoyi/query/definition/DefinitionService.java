@@ -43,6 +43,27 @@ public class DefinitionService {
     return definitions.selectList(new QueryWrapper<QueryDefinition>().orderByAsc("definition_id"));
   }
 
+  /** 返回数据目录与已接入查询对象的关联，包含预设明细来源。 */
+  public List<Map<String, Object>> tableLinks() {
+    Map<String, Long> tableIds = new HashMap<>();
+    metadata.list().forEach(table -> tableIds.put(table.getTableName(), table.getTableId()));
+    List<Map<String, Object>> links = new ArrayList<>();
+    for (var definition : list()) {
+      var adapter = registry.require(definition.getAdapterKey());
+      for (var source : adapter.sources().entrySet()) {
+        Long tableId = tableIds.get(source.getValue().getTable());
+        if (tableId == null) continue;
+        links.add(
+            Map.of(
+                "tableId", tableId,
+                "definitionId", definition.getDefinitionId(),
+                "displayName", definition.getDisplayName(),
+                "sourceLabel", source.getValue().getLabel()));
+      }
+    }
+    return links;
+  }
+
   /** 按 ID 返回查询对象。 */
   public QueryDefinition require(Long id) {
     var d = definitions.selectById(id);
