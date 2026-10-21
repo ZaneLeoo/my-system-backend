@@ -198,6 +198,7 @@
     </dependencies>
 
     <modules>
+        <module>my-system-signing</module>
         <module>my-system-query</module>
         <module>my-system-business</module>
         <module>ruoyi-admin</module>
