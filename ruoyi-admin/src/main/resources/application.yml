@@ -150,3 +150,16 @@ xss:
   excludes: /system/notice
   # 匹配链接
   urlPatterns: /system/*,/monitor/*,/tool/*
+
+# 独立电子签署，未配置时不运行后台任务；合同目录不能放入 ruoyi.profile。
+signing:
+  enabled: ${SIGNING_ENABLED:false}
+  environment: ${ESIGN_ENVIRONMENT:SANDBOX}
+  app-id: ${ESIGN_APP_ID:}
+  app-secret: ${ESIGN_APP_SECRET:}
+  callback-url: ${ESIGN_CALLBACK_URL:}
+  socks-proxy-host: ${ESIGN_SOCKS_PROXY_HOST:}
+  socks-proxy-port: ${ESIGN_SOCKS_PROXY_PORT:1080}
+  organization-name: ${ESIGN_ORGANIZATION_NAME:}
+  organization-id: ${ESIGN_ORGANIZATION_ID:}
+  private-directory: ${SIGNING_PRIVATE_DIRECTORY:./data/signing-private}

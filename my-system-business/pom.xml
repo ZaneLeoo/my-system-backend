@@ -10,6 +10,16 @@
     <description>MySystem 基础资料、采购与库存业务</description>
     <dependencies>
         <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.ruoyi</groupId>
+            <artifactId>my-system-signing</artifactId>
+            <version>${ruoyi.version}</version>
+        </dependency>
+        <dependency>
             <groupId>com.ruoyi</groupId>
             <artifactId>my-system-query</artifactId>
         </dependency>
